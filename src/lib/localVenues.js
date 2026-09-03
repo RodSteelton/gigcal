@@ -16,6 +16,16 @@ export const SUGGESTED_VENUES = [
     venueLabel: 'Ting Pavilion',
   },
   { city: 'Charlottesville', state: 'VA', name: 'Eastwood Farm and Winery', url: 'https://eastwoodfarmandwinery.com/full-calendar/' },
+  // Front Porch's own site renders its list with JavaScript, but they
+  // sell through AftonTickets, whose venue pages are readable.
+  {
+    city: 'Charlottesville',
+    state: 'VA',
+    name: 'The Front Porch (incl. Rivanna Roots)',
+    url: 'https://aftontickets.com/thefrontporch',
+    venueLabel: 'The Front Porch',
+  },
+  { city: 'Batesville', state: 'VA', name: 'Batesville Market', url: 'https://aftontickets.com/batesville' },
   { city: 'Crozet', state: 'VA', name: 'Starr Hill Brewery', url: 'https://starrhill.com/crozet-events' },
   { city: 'Crozet', state: 'VA', name: 'King Family Vineyards', url: 'https://kingfamilyvineyards.com/event-calendar/' },
   { city: 'Crozet', state: 'VA', name: 'Grace Estate Winery', url: 'https://www.graceestatewinery.com/event-calendar' },
@@ -27,7 +37,7 @@ export const TM_COVERED = {
 }
 
 // Towns whose suggestions should surface together (same area).
-const AREAS = [['charlottesville', 'crozet', 'waynesboro']]
+const AREAS = [['charlottesville', 'crozet', 'waynesboro', 'batesville']]
 
 export function suggestionsForTowns(towns) {
   const wanted = new Set()
@@ -74,7 +84,7 @@ export async function fetchVenueEvents(venue) {
     date: e.date,
     time: e.time || '',
     timeTBA: !e.time,
-    venue: venue.venueLabel || venue.name,
+    venue: e.venue || venue.venueLabel || venue.name,
     city: venue.city,
     state: venue.state || '',
     townKey: venueTownKey(venue),

@@ -60,11 +60,20 @@ First-run setup inside the app:
   Ting Pavilion's RSS feed for the free Fridays After Five series (free
   non-ticketed events don't appear in Ticketmaster; the suggestion carries an
   `include` filter so Ting's ticketed shows aren't listed twice).
+- AftonTickets venue pages (server-rendered HTML boxes, `fromAfton` parser —
+  works for any venue on that platform): The Front Porch via
+  aftontickets.com/thefrontporch (their own site renders its list with JS; the
+  Afton page also carries their Rivanna Roots / Potter's Craft Cider / Rivanna
+  River Company shows with per-event venue names) and Batesville Market via
+  aftontickets.com/batesville (their own site 403s robots). Multi-day
+  "season pass" entries are skipped.
 - Not machine-readable (JS-rendered or bot-blocked; would need per-site custom
-  scrapers): Paramount, Front Porch (tribe REST disabled), The Garage, UVA
-  Music, Three Notch'd (Shopify), Chisholm, Chiles, Pro Re Nata / Fallen Tree /
-  Barren Ridge (Wix), Batesville Market (403), Wayne Theatre (Etix, JS), Seven
-  Arrows, Stable Craft, Plaza Antigua, Hazy Mountain, Common Wealth Crush.
+  scrapers): Paramount, The Garage, UVA Music, Three Notch'd (Shopify),
+  Chisholm, Chiles, Pro Re Nata / Fallen Tree / Barren Ridge (Wix), Wayne
+  Theatre (Etix, JS), Seven Arrows, Stable Craft, Plaza Antigua, Hazy Mountain,
+  Common Wealth Crush. When a venue can't be read directly, check whether it
+  sells through a ticketing platform (AftonTickets, Etix, …) — the platform
+  page is often readable when the venue's own site isn't.
 
 ## Planned: online hosting
 

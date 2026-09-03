@@ -65,6 +65,12 @@ async function extract(target) {
   const ld = fromJsonLd(text)
   if (ld.length) return done('jsonld', ld)
 
+  // AftonTickets venue pages (server-rendered event boxes)
+  if (text.includes('featured-events-box-link')) {
+    const evs = fromAfton(text)
+    if (evs.length) return done('afton', evs)
+  }
+
   // RSS feed advertised or linked in the HTML (e.g. carbonhouse venue
   // sites expose /events/rss with per-item event dates)
   const rssUrl = findRssLink(text, target)
@@ -226,6 +232,44 @@ function walkLd(node, out) {
     })
   }
   if (node.subEvent) walkLd(node.subEvent, out)
+}
+
+// ---------- AftonTickets venue pages ----------
+const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 }
+
+function fromAfton(html) {
+  const out = []
+  const blocks = html.split('featured-events-box-link').slice(1)
+  for (const raw of blocks) {
+    const block = raw.slice(0, 5000)
+    const url = (block.match(/href="([^"]+)"/) || [])[1] || ''
+    const name = (block.match(/featured-events-box__head">([^<]+)</) || [])[1] || ''
+    const dateM = block.match(
+      /(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})(\s*-\s*[^<]{0,40})?/i
+    )
+    if (!name || !dateM) continue
+    // "Sep 3 2026 - Mar 30 2027" style ranges are passes/series, not shows
+    if (dateM[4] && /(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i.test(dateM[4])) continue
+    // the start time may sit in the same text run or in the next list item
+    const after = block.slice(dateM.index + dateM[0].length, dateM.index + dateM[0].length + 300)
+    const timeM = ((dateM[4] || '') + ' ' + after).match(/(\d{1,2}):(\d{2})\s*(am|pm)/i)
+    let time = ''
+    if (timeM) {
+      let h = Number(timeM[1]) % 12
+      if (/pm/i.test(timeM[3])) h += 12
+      time = `${String(h).padStart(2, '0')}:${timeM[2]}:00`
+    }
+    const venue = (block.match(/venue_category\.svg[^>]*>\s*([^<]+)</) || [])[1]
+    out.push({
+      name,
+      date: `${dateM[3]}-${String(MONTHS[dateM[1].toLowerCase()]).padStart(2, '0')}-${String(dateM[2]).padStart(2, '0')}`,
+      time,
+      url,
+      price: '',
+      venue: venue ? venue.trim() : '',
+    })
+  }
+  return out
 }
 
 // ---------- Squarespace ----------
