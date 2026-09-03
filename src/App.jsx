@@ -34,6 +34,23 @@ export default function App() {
   const [refreshTick, setRefreshTick] = useState(0)
   const [siteErrors, setSiteErrors] = useState([])
   const [settingsFocus, setSettingsFocus] = useState('')
+  const [installEvt, setInstallEvt] = useState(null)
+
+  useEffect(() => {
+    const onPrompt = (e) => {
+      e.preventDefault()
+      setInstallEvt(e)
+    }
+    window.addEventListener('beforeinstallprompt', onPrompt)
+    return () => window.removeEventListener('beforeinstallprompt', onPrompt)
+  }, [])
+
+  async function installApp() {
+    if (!installEvt) return
+    installEvt.prompt()
+    await installEvt.userChoice.catch(() => {})
+    setInstallEvt(null)
+  }
 
   function openKeySettings() {
     setSettingsFocus('key')
@@ -214,6 +231,12 @@ export default function App() {
         </div>
       ) : (
         <main>
+          {installEvt && (
+            <div className="key-cta">
+              <p>Put GigCal on your home screen — opens like an app, no browser bar.</p>
+              <button className="btn" onClick={installApp}>Add to phone</button>
+            </div>
+          )}
           {demo && (
             <div className="key-cta">
               <p>
