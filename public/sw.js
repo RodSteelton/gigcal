@@ -26,7 +26,7 @@ self.addEventListener('fetch', (e) => {
         return res
       })
       .catch(() =>
-        caches.match(e.request).then((m) => m || caches.match('/index.html'))
+        caches.match(e.request).then((m) => m || caches.match('./index.html'))
       )
   )
 })

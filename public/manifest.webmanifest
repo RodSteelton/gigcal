@@ -2,12 +2,12 @@
   "name": "GigCal — Live Music Near You",
   "short_name": "GigCal",
   "description": "A free calendar of upcoming live music in the towns you choose. Concerts and shows from Ticketmaster and local venues' own websites — music halls, clubs, wineries, breweries — in one month view, with tickets and details one tap away.",
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#0B0C10",
   "theme_color": "#0B0C10",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

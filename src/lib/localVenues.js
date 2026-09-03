@@ -70,10 +70,29 @@ export function venueTownKey(v) {
 const NON_MUSIC =
   /\b(trivia|yoga|pilates|barre|game night|run club|trail run|book club|bingo|paint (?:night|class|and sip)|watch party|farmers market|wine club pickup|cornhole|comedy)\b/i
 
+// Online (static hosting) there is no live /api/extract; a scheduled
+// build refreshes venue-events.json every few hours instead.
+let staticCachePromise = null
+function staticCache() {
+  if (!staticCachePromise) {
+    staticCachePromise = fetch('venue-events.json')
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => ({}))
+  }
+  return staticCachePromise
+}
+
 export async function fetchVenueEvents(venue) {
-  const res = await fetch(`/api/extract?url=${encodeURIComponent(venue.url)}`)
-  if (!res.ok) throw new Error('extract-http-' + res.status)
-  const data = await res.json()
+  let data = null
+  try {
+    const res = await fetch(`/api/extract?url=${encodeURIComponent(venue.url)}`)
+    if (res.ok) data = await res.json()
+  } catch {}
+  if (!data) {
+    const all = await staticCache()
+    data = all[venue.url] || null
+  }
+  if (!data) throw new Error('extract-unavailable')
   if (!data.ok) throw new Error(data.error || 'extract-failed')
   const include = venue.include ? new RegExp(venue.include, 'i') : null
   return data.events

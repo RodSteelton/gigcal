@@ -1,3 +1,5 @@
+import { SUGGESTED_VENUES } from './localVenues.js'
+
 const SETTINGS_KEY = 'gigcal-settings'
 const CACHE_KEY = 'gigcal-events-cache'
 const CACHE_TTL = 6 * 60 * 60 * 1000 // re-fetch a town's month after 6 hours
@@ -14,7 +16,13 @@ export function loadSettings() {
       }
     }
   } catch {}
-  return { apiKey: '', towns: [], venues: [] }
+  // First run: ship the curated area setup as the starting point.
+  // Each device can prune or extend it; the listings key is always per-person.
+  return {
+    apiKey: '',
+    towns: [{ city: 'Charlottesville', state: 'VA' }],
+    venues: SUGGESTED_VENUES.map((v) => ({ ...v })),
+  }
 }
 
 export function saveSettings(s) {
