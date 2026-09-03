@@ -7,10 +7,14 @@ export function loadSettings() {
     const raw = localStorage.getItem(SETTINGS_KEY)
     if (raw) {
       const s = JSON.parse(raw)
-      return { apiKey: s.apiKey || '', towns: Array.isArray(s.towns) ? s.towns : [] }
+      return {
+        apiKey: s.apiKey || '',
+        towns: Array.isArray(s.towns) ? s.towns : [],
+        venues: Array.isArray(s.venues) ? s.venues : [],
+      }
     }
   } catch {}
-  return { apiKey: '', towns: [] }
+  return { apiKey: '', towns: [], venues: [] }
 }
 
 export function saveSettings(s) {

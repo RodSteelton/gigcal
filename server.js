@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { extractEvents } from './server-extract.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.join(__dirname, 'dist')
@@ -40,8 +41,30 @@ function lanIP() {
   return fallback || 'localhost'
 }
 
-const server = http.createServer((req, res) => {
+function isPrivateHost(host) {
+  return (
+    /^(localhost|127\.|10\.|192\.168\.|0\.|\[::1\]|169\.254\.)/i.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /\.local$/i.test(host)
+  )
+}
+
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost')
+  if (url.pathname === '/api/extract') {
+    const target = url.searchParams.get('url') || ''
+    let parsed
+    try {
+      parsed = new URL(target)
+    } catch {
+      parsed = null
+    }
+    const bad = !parsed || !/^https?:$/.test(parsed.protocol) || isPrivateHost(parsed.hostname)
+    const result = bad ? { ok: false, error: 'bad-url' } : await extractEvents(target)
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+    res.end(JSON.stringify(result))
+    return
+  }
   if (url.pathname === '/api/info') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
     res.end(JSON.stringify({ ip: lanIP(), port: PORT }))

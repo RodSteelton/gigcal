@@ -368,6 +368,23 @@ input:focus, select:focus {
   border-color: var(--amber-deep);
 }
 
+.btn.small { padding: 6px 12px; font-size: 13px; }
+
+.venue-town { color: var(--dim); font-size: 13px; }
+
+.venue-add {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.venue-add-row {
+  display: flex;
+  gap: 6px;
+}
+
+.venue-add-row input { flex: 1; min-width: 0; }
+
 .key-form {
   display: flex;
   gap: 6px;

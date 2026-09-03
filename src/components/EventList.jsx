@@ -47,7 +47,7 @@ export default function EventList({ events, showTown }) {
                   {e.price && <span className="chip price">{e.price}</span>}
                   {e.url && (
                     <a className="tickets" href={e.url} target="_blank" rel="noopener noreferrer">
-                      Tickets ↗
+                      {e.fromSite ? 'Details ↗' : 'Tickets ↗'}
                     </a>
                   )}
                 </div>

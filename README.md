@@ -30,12 +30,41 @@ First-run setup inside the app:
 
 ## Structure
 
-- `src/App.jsx` — state: settings (towns + key), month, filters; fetch + cache flow.
+- `src/App.jsx` — state: settings (towns + key + venues), month, filters; fetch,
+  merge, dedupe (by id, then act+date so a venue's show that is also on
+  Ticketmaster appears once) + cache flow.
 - `src/lib/ticketmaster.js` — Discovery API client + event normalizer.
-- `src/lib/sample.js` — deterministic sample events for keyless demo mode.
+- `src/lib/localVenues.js` — tested venue suggestions for the Charlottesville /
+  Crozet / Waynesboro area, area grouping, non-music exclusion filter, and the
+  client for `/api/extract`.
+- `src/lib/sample.js` — deterministic sample events (only when no key AND no venues).
 - `src/lib/storage.js` — localStorage settings + 6-hour event cache.
 - `src/components/` — `Calendar` (month grid), `EventList` (agenda), `Settings`.
 - `public/sw.js` — network-first service worker (offline fallback to cache).
+- `server-extract.js` — the venue-calendar reader behind `/api/extract?url=…`
+  (3-hour in-memory cache, private-host blocklist). Given any events-page URL it
+  tries, in order: ICS feed → JSON-LD schema.org events in the HTML →
+  Squarespace `?format=json` → WordPress "The Events Calendar" REST →
+  WordPress `?ical=1` export. Runs server-side because browsers can't fetch
+  other sites (CORS).
 
-Events data: Ticketmaster covers halls, theaters, and bigger clubs. Small-bar
-coverage (per-venue scrapers or other APIs) is future work.
+## Events data
+
+- Ticketmaster Discovery API covers the big venues (in Charlottesville: Ting
+  Pavilion, Jefferson Theater, The Southern, John Paul Jones Arena — verified
+  their sites link to ticketmaster.com).
+- Venue-site reading (verified working 2026-09-03): Eastwood Farm and Winery
+  (JSON-LD), Starr Hill Crozet (Squarespace), King Family Vineyards (JSON-LD),
+  Grace Estate Winery (Squarespace), The Foundry Waynesboro (JSON-LD).
+- Not machine-readable (JS-rendered or bot-blocked; would need per-site custom
+  scrapers): Paramount, Front Porch (tribe REST disabled), The Garage, UVA
+  Music, Three Notch'd (Shopify), Chisholm, Chiles, Pro Re Nata / Fallen Tree /
+  Barren Ridge (Wix), Batesville Market (403), Wayne Theatre (Etix, JS), Seven
+  Arrows, Stable Craft, Plaza Antigua, Hazy Mountain, Common Wealth Crush.
+
+## Planned: online hosting
+
+Decision (2026-09-03): publish online once feature work settles; each user gets
+their own free Ticketmaster key. Note: static hosting alone won't run
+`/api/extract` — the venue reader needs a small server home (e.g. a free
+Cloudflare Worker) when we deploy.

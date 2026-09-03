@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { suggestionsForTowns, tmCoveredForTowns } from '../lib/localVenues.js'
 
 const STATES = 'AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC'.split(' ')
 
@@ -35,6 +36,38 @@ export default function Settings({ settings, onChange, onBack, onRefresh }) {
 
   function removeTown(idx) {
     onChange({ ...settings, towns: settings.towns.filter((_, i) => i !== idx) })
+  }
+
+  const [vName, setVName] = useState('')
+  const [vUrl, setVUrl] = useState('')
+  const [vCity, setVCity] = useState('')
+  const [vState, setVState] = useState('')
+
+  const suggestions = suggestionsForTowns(settings.towns).filter(
+    (s) => !settings.venues.some((v) => v.url === s.url)
+  )
+  const tmCovered = tmCoveredForTowns(settings.towns)
+
+  function addVenue(v) {
+    if (settings.venues.some((x) => x.url === v.url)) return
+    onChange({ ...settings, venues: [...settings.venues, v] })
+  }
+
+  function addManualVenue(e) {
+    e.preventDefault()
+    const name = vName.trim()
+    let url = vUrl.trim()
+    if (!name || !url) return
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url
+    addVenue({ name, url, city: vCity.trim() || (settings.towns[0]?.city ?? ''), state: vState.trim().toUpperCase() || (settings.towns[0]?.state ?? '') })
+    setVName('')
+    setVUrl('')
+    setVCity('')
+    setVState('')
+  }
+
+  function removeVenue(idx) {
+    onChange({ ...settings, venues: settings.venues.filter((_, i) => i !== idx) })
   }
 
   function saveKey(e) {
@@ -76,6 +109,65 @@ export default function Settings({ settings, onChange, onBack, onRefresh }) {
             ))}
           </select>
           <button className="btn" type="submit">Add</button>
+        </form>
+      </section>
+
+      <section className="panel">
+        <h2>Local venues</h2>
+        <p className="hint">
+          Besides the big-hall listings, GigCal can read the events calendar on a
+          venue's own website — wineries, breweries, small halls.
+        </p>
+        {settings.venues.length > 0 && (
+          <ul className="town-list">
+            {settings.venues.map((v, i) => (
+              <li key={v.url}>
+                <span>
+                  {v.name} <span className="venue-town">({v.city}{v.state ? `, ${v.state}` : ''})</span>
+                </span>
+                <button className="remove" onClick={() => removeVenue(i)} aria-label={`Remove ${v.name}`}>×</button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {suggestions.length > 0 && (
+          <>
+            <p className="hint dim">Suggestions for your area — tap to add:</p>
+            <ul className="town-list">
+              {suggestions.map((s) => (
+                <li key={s.url}>
+                  <span>
+                    {s.name} <span className="venue-town">({s.city}, {s.state})</span>
+                  </span>
+                  <button className="btn small" onClick={() => addVenue(s)}>+ Add</button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {tmCovered.length > 0 && (
+          <p className="hint dim">
+            Already included with your listings key (no need to add):{' '}
+            {tmCovered.join(', ')}.
+          </p>
+        )}
+        <p className="hint dim">
+          Add any other venue by pasting the web address of its events page.
+          Many sites work; if one can't be read, the calendar will say so.
+        </p>
+        <form className="venue-add" onSubmit={addManualVenue}>
+          <input value={vName} onChange={(e) => setVName(e.target.value)} placeholder="Venue name" aria-label="Venue name" />
+          <input value={vUrl} onChange={(e) => setVUrl(e.target.value)} placeholder="Events page address (https://…)" aria-label="Events page address" />
+          <div className="venue-add-row">
+            <input value={vCity} onChange={(e) => setVCity(e.target.value)} placeholder="Town" aria-label="Venue town" />
+            <select value={vState} onChange={(e) => setVState(e.target.value)} aria-label="Venue state">
+              <option value="">State…</option>
+              {STATES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <button className="btn" type="submit">Add</button>
+          </div>
         </form>
       </section>
 

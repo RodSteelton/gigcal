@@ -4,6 +4,7 @@ import EventList from './components/EventList.jsx'
 import Settings from './components/Settings.jsx'
 import { loadSettings, saveSettings, cacheGet, cachePut, cacheClear } from './lib/storage.js'
 import { fetchTownEvents, townKey } from './lib/ticketmaster.js'
+import { fetchVenueEvents, venueTownKey } from './lib/localVenues.js'
 import { sampleEvents } from './lib/sample.js'
 
 function firstOfMonth(d) {
@@ -31,6 +32,7 @@ export default function App() {
   const [townFilter, setTownFilter] = useState('all')
   const [selectedDate, setSelectedDate] = useState(null)
   const [refreshTick, setRefreshTick] = useState(0)
+  const [siteErrors, setSiteErrors] = useState([])
 
   const demo = !settings.apiKey
 
@@ -43,38 +45,70 @@ export default function App() {
     let cancelled = false
     async function load() {
       setError('')
-      if (!settings.towns.length) {
+      setSiteErrors([])
+      if (!settings.towns.length && !settings.venues.length) {
         setEvents([])
-        return
-      }
-      if (!settings.apiKey) {
-        setEvents(sortByStart(sampleEvents(monthStart, settings.towns)))
         return
       }
       setLoading(true)
       const { startISO, endISO } = monthISORange(monthStart)
       const monthTag = `${monthStart.getFullYear()}-${monthStart.getMonth() + 1}`
+      const monthPrefix = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`
       const all = []
       let err = ''
-      for (const town of settings.towns) {
-        const key = `${townKey(town)}|${monthTag}`
+      const failedSites = []
+
+      if (settings.apiKey) {
+        for (const town of settings.towns) {
+          const key = `${townKey(town)}|${monthTag}`
+          let evs = cacheGet(key)
+          if (!evs) {
+            try {
+              evs = await fetchTownEvents({ apiKey: settings.apiKey, town, startISO, endISO })
+              cachePut(key, evs)
+            } catch (e) {
+              err = e.message
+              evs = []
+            }
+          }
+          all.push(...evs)
+        }
+      }
+
+      for (const venue of settings.venues) {
+        const key = `site:${venue.url}`
         let evs = cacheGet(key)
         if (!evs) {
           try {
-            evs = await fetchTownEvents({ apiKey: settings.apiKey, town, startISO, endISO })
+            evs = await fetchVenueEvents(venue)
             cachePut(key, evs)
-          } catch (e) {
-            err = e.message
+          } catch {
+            failedSites.push(venue.name)
             evs = []
           }
         }
-        all.push(...evs)
+        all.push(...evs.filter((e) => e.date.startsWith(monthPrefix)))
       }
+
+      if (!settings.apiKey && !settings.venues.length) {
+        all.push(...sampleEvents(monthStart, settings.towns))
+      }
+
       if (cancelled) return
-      const seen = new Set()
-      const deduped = all.filter((e) => (seen.has(e.id) ? false : (seen.add(e.id), true)))
+      // dedupe by id, then by act+date (a venue's show may also be on Ticketmaster)
+      const seenId = new Set()
+      const seenShow = new Set()
+      const deduped = all.filter((e) => {
+        if (seenId.has(e.id)) return false
+        seenId.add(e.id)
+        const show = `${e.name.toLowerCase().replace(/\W+/g, ' ').trim()}|${e.date}`
+        if (seenShow.has(show)) return false
+        seenShow.add(show)
+        return true
+      })
       setEvents(sortByStart(deduped))
       setLoading(false)
+      setSiteErrors(failedSites)
       if (err === 'bad-key') setError("That key didn't work — double-check it in Settings.")
       else if (err === 'rate-limit') setError('Checked too often — try again in a minute.')
       else if (err) setError('Could not reach the listings service. Check your internet connection.')
@@ -96,7 +130,10 @@ export default function App() {
     setMonthStart((m) => new Date(m.getFullYear(), m.getMonth() + dir, 1))
   }
 
-  const townKeys = useMemo(() => settings.towns.map(townKey), [settings.towns])
+  const townKeys = useMemo(() => {
+    const keys = [...settings.towns.map(townKey), ...settings.venues.map(venueTownKey)]
+    return [...new Set(keys)]
+  }, [settings.towns, settings.venues])
 
   const visible = useMemo(() => {
     let list = events
@@ -123,7 +160,7 @@ export default function App() {
         <div className="brand">
           <span className="brand-mark">♪</span> GigCal
         </div>
-        {settings.towns.length > 1 && screen === 'calendar' && (
+        {townKeys.length > 1 && screen === 'calendar' && (
           <select
             className="town-filter"
             value={townFilter}
@@ -152,7 +189,7 @@ export default function App() {
           onBack={() => setScreen('calendar')}
           onRefresh={refresh}
         />
-      ) : settings.towns.length === 0 ? (
+      ) : settings.towns.length === 0 && settings.venues.length === 0 ? (
         <div className="welcome">
           <h1>Live music, wherever you are.</h1>
           <p>
@@ -165,12 +202,22 @@ export default function App() {
         </div>
       ) : (
         <main>
-          {demo && (
+          {demo && settings.venues.length === 0 && (
             <button className="banner demo" onClick={() => setScreen('settings')}>
               Showing <b>sample shows</b>. Add your free listings key in Settings to see real ones. ›
             </button>
           )}
+          {demo && settings.venues.length > 0 && (
+            <button className="banner demo" onClick={() => setScreen('settings')}>
+              Showing real shows from your <b>local venues</b>. Add the free key in Settings for the big halls too. ›
+            </button>
+          )}
           {error && <div className="banner error">{error}</div>}
+          {siteErrors.length > 0 && (
+            <div className="banner error">
+              Couldn't read the calendar at: {siteErrors.join(', ')}. Their site may be down or changed.
+            </div>
+          )}
           {loading && <div className="banner loading">Checking for shows…</div>}
           <Calendar
             monthStart={monthStart}
@@ -184,7 +231,7 @@ export default function App() {
               Showing one day — tap to see the whole month
             </button>
           )}
-          <EventList events={listed} showTown={settings.towns.length > 1 && townFilter === 'all'} />
+          <EventList events={listed} showTown={townKeys.length > 1 && townFilter === 'all'} />
         </main>
       )}
     </div>
