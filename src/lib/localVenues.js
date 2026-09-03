@@ -75,7 +75,9 @@ const NON_MUSIC =
 let staticCachePromise = null
 function staticCache() {
   if (!staticCachePromise) {
-    staticCachePromise = fetch('venue-events.json')
+    // no-cache: revalidate so a fresh scheduled build isn't masked by the
+    // host's short-lived HTTP cache
+    staticCachePromise = fetch('venue-events.json', { cache: 'no-cache' })
       .then((r) => (r.ok ? r.json() : {}))
       .catch(() => ({}))
   }
