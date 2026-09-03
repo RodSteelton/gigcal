@@ -1,0 +1,55 @@
+// Ticketmaster Discovery API client. The API allows browser requests
+// directly (CORS), so no server of our own is involved — the key the
+// user saves in Settings goes straight from their device to Ticketmaster.
+const BASE = 'https://app.ticketmaster.com/discovery/v2/events.json'
+
+export function townKey(t) {
+  return t.state ? `${t.city}, ${t.state}` : t.city
+}
+
+export async function fetchTownEvents({ apiKey, town, startISO, endISO }) {
+  const params = new URLSearchParams({
+    apikey: apiKey,
+    classificationName: 'Music',
+    city: town.city,
+    countryCode: 'US',
+    sort: 'date,asc',
+    size: '200',
+    startDateTime: startISO,
+    endDateTime: endISO,
+  })
+  if (town.state) params.set('stateCode', town.state)
+  const res = await fetch(`${BASE}?${params}`)
+  if (res.status === 401) throw new Error('bad-key')
+  if (res.status === 429) throw new Error('rate-limit')
+  if (!res.ok) throw new Error('http-' + res.status)
+  const data = await res.json()
+  const events = data?._embedded?.events || []
+  return events.map((e) => normalize(e, town))
+}
+
+function normalize(e, town) {
+  const venue = e._embedded?.venues?.[0]
+  const genre = e.classifications?.[0]?.genre?.name
+  return {
+    id: e.id,
+    name: e.name || 'Untitled event',
+    date: e.dates?.start?.localDate || '',
+    time: e.dates?.start?.localTime || '',
+    timeTBA: !!(e.dates?.start?.timeTBA || e.dates?.start?.noSpecificTime),
+    venue: venue?.name || 'Venue to be announced',
+    city: venue?.city?.name || town.city,
+    state: venue?.state?.stateCode || town.state || '',
+    townKey: townKey(town),
+    genre: genre && genre !== 'Undefined' ? genre : '',
+    url: e.url || '',
+    price: priceLabel(e.priceRanges),
+  }
+}
+
+function priceLabel(ranges) {
+  const r = Array.isArray(ranges) ? ranges[0] : null
+  if (!r || r.min == null) return ''
+  if (r.max == null || r.min === r.max) return `$${Math.round(r.min)}`
+  return `$${Math.round(r.min)}–$${Math.round(r.max)}`
+}
