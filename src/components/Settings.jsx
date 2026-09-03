@@ -1,9 +1,17 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { suggestionsForTowns, tmCoveredForTowns } from '../lib/localVenues.js'
 
 const STATES = 'AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC'.split(' ')
 
-export default function Settings({ settings, onChange, onBack, onRefresh }) {
+export default function Settings({ settings, onChange, onBack, onRefresh, focusKey }) {
+  const keyPanelRef = useRef(null)
+
+  useEffect(() => {
+    if (focusKey && keyPanelRef.current) {
+      keyPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [focusKey])
+
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [keyDraft, setKeyDraft] = useState(settings.apiKey)
@@ -171,7 +179,7 @@ export default function Settings({ settings, onChange, onBack, onRefresh }) {
         </form>
       </section>
 
-      <section className="panel">
+      <section className={`panel${focusKey ? ' highlight' : ''}`} ref={keyPanelRef}>
         <h2>Event data key</h2>
         <p className="hint">
           Real concert listings come from Ticketmaster. It's free — takes about two minutes:

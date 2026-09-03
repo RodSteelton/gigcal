@@ -33,27 +33,31 @@ export default function EventList({ events, showTown }) {
       {groups.map(([date, list]) => (
         <section key={date}>
           <h2 className="date-heading">{headingFor(date)}</h2>
-          {list.map((e) => (
-            <article key={e.id} className="event-card">
-              <div className="event-time">{timeLabel(e)}</div>
-              <div className="event-body">
-                <div className="event-name">{e.name}</div>
-                <div className="event-venue">
-                  {e.venue}
-                  {showTown && ` · ${e.city}${e.state ? ', ' + e.state : ''}`}
+          {list.map((e) => {
+            const Card = e.url ? 'a' : 'article'
+            const linkProps = e.url
+              ? { href: e.url, target: '_blank', rel: 'noopener noreferrer' }
+              : {}
+            return (
+              <Card key={e.id} className="event-card" {...linkProps}>
+                <div className="event-time">{timeLabel(e)}</div>
+                <div className="event-body">
+                  <div className="event-name">{e.name}</div>
+                  <div className="event-venue">
+                    {e.venue}
+                    {showTown && ` · ${e.city}${e.state ? ', ' + e.state : ''}`}
+                  </div>
+                  <div className="event-meta">
+                    {e.genre && <span className="chip">{e.genre}</span>}
+                    {e.price && <span className="chip price">{e.price}</span>}
+                    {e.url && (
+                      <span className="tickets">{e.fromSite ? 'Details ↗' : 'Tickets ↗'}</span>
+                    )}
+                  </div>
                 </div>
-                <div className="event-meta">
-                  {e.genre && <span className="chip">{e.genre}</span>}
-                  {e.price && <span className="chip price">{e.price}</span>}
-                  {e.url && (
-                    <a className="tickets" href={e.url} target="_blank" rel="noopener noreferrer">
-                      {e.fromSite ? 'Details ↗' : 'Tickets ↗'}
-                    </a>
-                  )}
-                </div>
-              </div>
-            </article>
-          ))}
+              </Card>
+            )
+          })}
         </section>
       ))}
     </div>

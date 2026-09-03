@@ -1,7 +1,8 @@
 // Venue-calendar reader: given a venue's events-page URL, try the common
 // machine-readable formats in order and return normalized events.
-// Order: ICS feed → JSON-LD schema.org markup → Squarespace ?format=json
-// → WordPress "The Events Calendar" REST → WordPress ?ical=1 export.
+// Order: ICS feed → RSS with event dates → JSON-LD schema.org markup →
+// RSS feed discovered in the HTML → Squarespace ?format=json →
+// WordPress "The Events Calendar" REST → WordPress ?ical=1 export.
 // Runs server-side because browsers can't fetch other sites (CORS).
 
 const UA =
@@ -50,6 +51,11 @@ async function extract(target) {
     return done('ics', parseICS(text))
   }
 
+  if (/xml|rss/.test(type) || /^\s*<\?xml|^\s*<rss/.test(text)) {
+    const evs = fromRss(text)
+    if (evs.length) return done('rss', evs)
+  }
+
   if (type.includes('json') || text[0] === '{' || text[0] === '[') {
     const evs = fromSquarespace(text, target)
     if (evs.length) return done('squarespace', evs)
@@ -58,6 +64,17 @@ async function extract(target) {
   // HTML page: try embedded JSON-LD first
   const ld = fromJsonLd(text)
   if (ld.length) return done('jsonld', ld)
+
+  // RSS feed advertised or linked in the HTML (e.g. carbonhouse venue
+  // sites expose /events/rss with per-item event dates)
+  const rssUrl = findRssLink(text, target)
+  if (rssUrl) {
+    const rss = await fetchText(rssUrl).catch(() => null)
+    if (rss) {
+      const evs = fromRss(rss.text)
+      if (evs.length) return done('rss', evs)
+    }
+  }
 
   // Squarespace page? ask for its JSON form
   const sqspUrl = target + (target.includes('?') ? '&' : '?') + 'format=json'
@@ -127,6 +144,46 @@ function parseICS(text) {
     }
   }
   return events.map((e) => ({ name: e.name || '', date: e.date || '', time: e.time || '', url: e.url || '', price: '' }))
+}
+
+// ---------- RSS with event dates ----------
+// Accepts only items carrying an event-start field (ev:startdate or
+// xCal dtstart); a plain blog feed yields nothing and the chain moves on.
+function fromRss(xml) {
+  const items = xml.match(/<item[\s>][\s\S]*?<\/item>/g) || []
+  const out = []
+  for (const item of items) {
+    const get = (tag) => {
+      const m = item.match(new RegExp('<' + tag + '[^>]*>([\\s\\S]*?)</' + tag + '>', 'i'))
+      return m ? m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim() : ''
+    }
+    const start = get('ev:startdate') || get('xCal:dtstart')
+    if (!start) continue
+    const d = new Date(start)
+    if (Number.isNaN(d.getTime())) continue
+    out.push({
+      name: get('title'),
+      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+      time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`,
+      url: get('link'),
+      price: '',
+    })
+  }
+  return out
+}
+
+function findRssLink(html, target) {
+  const origin = new URL(target).origin
+  const alt = html.match(
+    /<link[^>]*type=["']application\/rss\+xml["'][^>]*href=["']([^"']+)["']/i
+  )
+  const href = alt ? alt[1] : (html.match(/href=["']([^"']*events\/rss[^"']*)["']/i) || [])[1]
+  if (!href) return null
+  try {
+    return new URL(href, origin).href
+  } catch {
+    return null
+  }
 }
 
 // ---------- JSON-LD ----------

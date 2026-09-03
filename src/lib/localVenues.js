@@ -4,6 +4,17 @@
 // Ticketmaster key, so they are listed only as an FYI, not scraped.
 
 export const SUGGESTED_VENUES = [
+  // Ting's ticketed shows come via Ticketmaster; its RSS feed adds the
+  // free Fridays After Five series, filtered by `include` so the
+  // ticketed shows don't appear twice.
+  {
+    city: 'Charlottesville',
+    state: 'VA',
+    name: 'Ting Pavilion — Fridays After Five (free)',
+    url: 'https://www.tingpavilion.com/events/rss',
+    include: 'fridays after five',
+    venueLabel: 'Ting Pavilion',
+  },
   { city: 'Charlottesville', state: 'VA', name: 'Eastwood Farm and Winery', url: 'https://eastwoodfarmandwinery.com/full-calendar/' },
   { city: 'Crozet', state: 'VA', name: 'Starr Hill Brewery', url: 'https://starrhill.com/crozet-events' },
   { city: 'Crozet', state: 'VA', name: 'King Family Vineyards', url: 'https://kingfamilyvineyards.com/event-calendar/' },
@@ -54,13 +65,16 @@ export async function fetchVenueEvents(venue) {
   if (!res.ok) throw new Error('extract-http-' + res.status)
   const data = await res.json()
   if (!data.ok) throw new Error(data.error || 'extract-failed')
-  return data.events.filter((e) => !NON_MUSIC.test(e.name)).map((e, i) => ({
+  const include = venue.include ? new RegExp(venue.include, 'i') : null
+  return data.events
+    .filter((e) => !NON_MUSIC.test(e.name) && (!include || include.test(e.name)))
+    .map((e, i) => ({
     id: `site-${venue.name}-${e.date}-${i}`,
     name: e.name,
     date: e.date,
     time: e.time || '',
     timeTBA: !e.time,
-    venue: venue.name,
+    venue: venue.venueLabel || venue.name,
     city: venue.city,
     state: venue.state || '',
     townKey: venueTownKey(venue),

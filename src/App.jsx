@@ -33,6 +33,12 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(null)
   const [refreshTick, setRefreshTick] = useState(0)
   const [siteErrors, setSiteErrors] = useState([])
+  const [settingsFocus, setSettingsFocus] = useState('')
+
+  function openKeySettings() {
+    setSettingsFocus('key')
+    setScreen('settings')
+  }
 
   const demo = !settings.apiKey
 
@@ -175,7 +181,10 @@ export default function App() {
         )}
         <button
           className="btn ghost gear"
-          onClick={() => setScreen(screen === 'settings' ? 'calendar' : 'settings')}
+          onClick={() => {
+            setSettingsFocus('')
+            setScreen(screen === 'settings' ? 'calendar' : 'settings')
+          }}
           aria-label="Settings"
         >
           ⚙
@@ -188,13 +197,16 @@ export default function App() {
           onChange={updateSettings}
           onBack={() => setScreen('calendar')}
           onRefresh={refresh}
+          focusKey={settingsFocus === 'key'}
         />
       ) : settings.towns.length === 0 && settings.venues.length === 0 ? (
         <div className="welcome">
           <h1>Live music, wherever you are.</h1>
           <p>
-            Pick your towns and GigCal fills a calendar with the shows coming to
-            the clubs, halls, and theaters near you.
+            Pick your towns and GigCal fills a month calendar with the shows
+            coming to the halls, clubs, wineries, and breweries near you —
+            big-name concerts and free local nights alike. Tap any show for
+            details and tickets.
           </p>
           <button className="btn big" onClick={() => setScreen('settings')}>
             Choose my towns
@@ -202,15 +214,15 @@ export default function App() {
         </div>
       ) : (
         <main>
-          {demo && settings.venues.length === 0 && (
-            <button className="banner demo" onClick={() => setScreen('settings')}>
-              Showing <b>sample shows</b>. Add your free listings key in Settings to see real ones. ›
-            </button>
-          )}
-          {demo && settings.venues.length > 0 && (
-            <button className="banner demo" onClick={() => setScreen('settings')}>
-              Showing real shows from your <b>local venues</b>. Add the free key in Settings for the big halls too. ›
-            </button>
+          {demo && (
+            <div className="key-cta">
+              <p>
+                {settings.venues.length > 0
+                  ? 'Your local venues are live. For the big halls and arenas, add the free listings key — takes two minutes.'
+                  : 'These are sample shows. Real listings need a free key — takes two minutes.'}
+              </p>
+              <button className="btn" onClick={openKeySettings}>Get my free key</button>
+            </div>
           )}
           {error && <div className="banner error">{error}</div>}
           {siteErrors.length > 0 && (

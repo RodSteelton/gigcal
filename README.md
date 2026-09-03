@@ -43,9 +43,10 @@ First-run setup inside the app:
 - `public/sw.js` — network-first service worker (offline fallback to cache).
 - `server-extract.js` — the venue-calendar reader behind `/api/extract?url=…`
   (3-hour in-memory cache, private-host blocklist). Given any events-page URL it
-  tries, in order: ICS feed → JSON-LD schema.org events in the HTML →
-  Squarespace `?format=json` → WordPress "The Events Calendar" REST →
-  WordPress `?ical=1` export. Runs server-side because browsers can't fetch
+  tries, in order: ICS feed → RSS with `ev:startdate` items (carbonhouse venue
+  sites) → JSON-LD schema.org events in the HTML → an RSS feed discovered in
+  the HTML → Squarespace `?format=json` → WordPress "The Events Calendar" REST
+  → WordPress `?ical=1` export. Runs server-side because browsers can't fetch
   other sites (CORS).
 
 ## Events data
@@ -55,7 +56,10 @@ First-run setup inside the app:
   their sites link to ticketmaster.com).
 - Venue-site reading (verified working 2026-09-03): Eastwood Farm and Winery
   (JSON-LD), Starr Hill Crozet (Squarespace), King Family Vineyards (JSON-LD),
-  Grace Estate Winery (Squarespace), The Foundry Waynesboro (JSON-LD).
+  Grace Estate Winery (Squarespace), The Foundry Waynesboro (JSON-LD), and
+  Ting Pavilion's RSS feed for the free Fridays After Five series (free
+  non-ticketed events don't appear in Ticketmaster; the suggestion carries an
+  `include` filter so Ting's ticketed shows aren't listed twice).
 - Not machine-readable (JS-rendered or bot-blocked; would need per-site custom
   scrapers): Paramount, Front Porch (tribe REST disabled), The Garage, UVA
   Music, Three Notch'd (Shopify), Chisholm, Chiles, Pro Re Nata / Fallen Tree /
