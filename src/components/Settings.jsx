@@ -85,10 +85,20 @@ export default function Settings({ settings, onChange, onBack, onRefresh }) {
           Real concert listings come from Ticketmaster. It's free — takes about two minutes:
         </p>
         <ol className="hint steps">
-          <li>Go to <a href="https://developer.ticketmaster.com" target="_blank" rel="noopener noreferrer">developer.ticketmaster.com</a> and create a free account.</li>
-          <li>It will give you an app with a <b>Consumer Key</b> — a long string of letters and numbers.</li>
+          <li>
+            <a href="https://developer-account.ticketmaster.com/user/register" target="_blank" rel="noopener noreferrer">
+              Create your free Ticketmaster account here
+            </a>{' '}
+            (for "Company" you can just put <b>GigCal</b>).
+          </li>
+          <li>Once you're signed in, your account page lists an app with a <b>Consumer Key</b> — a long string of letters and numbers.</li>
           <li>Copy that key and paste it below.</li>
         </ol>
+        <p className="hint dim">
+          One key is all you need — it works the same on iPhone, Android, and this
+          computer. Ignore any pages about "SDKs" or choosing iOS/Android; those are
+          for ticketing companies, not for GigCal.
+        </p>
         <form className="key-form" onSubmit={saveKey}>
           <input
             className="mono"
