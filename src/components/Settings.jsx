@@ -279,6 +279,24 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
           <div className="phone-url mono">{phoneUrl}</div>
         </section>
       )}
+
+      <section className="panel">
+        <h2>Get the Android app</h2>
+        <p className="hint">
+          For an Android phone or tablet, there's a downloadable app version with
+          its own icon on your home screen — no browser needed.
+        </p>
+        <p className="hint dim">
+          It's not on the Play Store, so Android will ask once to allow installs
+          from outside the store. That's expected — just allow it and continue.
+        </p>
+        <a
+          className="btn"
+          href="https://github.com/RodSteelton/gigcal/releases/download/android-v1/app-release-signed.apk"
+        >
+          Download for Android
+        </a>
+      </section>
     </div>
   )
 }

@@ -8,13 +8,16 @@
     "build": "vite build",
     "preview": "vite preview",
     "icons": "node scripts/make-icons.mjs",
-    "serve": "node server.js"
+    "serve": "node server.js",
+    "android:gen": "node scripts/gen-twa.mjs",
+    "android:build": "cd android && npx bubblewrap build"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@bubblewrap/cli": "^1.25.0",
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.4.0",
     "wrangler": "^4.129.0"
