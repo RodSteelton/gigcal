@@ -373,7 +373,13 @@ export default function App() {
       )}
       <footer className="app-footer">
         <div>© 2026 SS Berr · All rights reserved</div>
-        <div>GigCal is ad-free. If you like it, send me $5 via Venmo — or whatever. 🎶</div>
+        <div>
+          GigCal is ad-free. If you like it,{' '}
+          <a href="https://venmo.com/u/Stuart-Berr" target="_blank" rel="noopener noreferrer">
+            send me $5 via Venmo
+          </a>{' '}
+          — or whatever. 🎶
+        </div>
       </footer>
     </div>
   )

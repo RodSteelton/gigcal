@@ -1,7 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { suggestionsForTowns, tmCoveredForTowns, areaCities } from '../lib/localVenues.js'
+import { townKey } from '../lib/ticketmaster.js'
 
 const STATES = 'AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC'.split(' ')
+
+const COUNTRIES = [
+  ['US', 'United States'], ['CA', 'Canada'], ['GB', 'United Kingdom'], ['IE', 'Ireland'],
+  ['AU', 'Australia'], ['NZ', 'New Zealand'], ['MX', 'Mexico'], ['DE', 'Germany'],
+  ['AT', 'Austria'], ['CH', 'Switzerland'], ['NL', 'Netherlands'], ['BE', 'Belgium'],
+  ['DK', 'Denmark'], ['SE', 'Sweden'], ['NO', 'Norway'], ['FI', 'Finland'],
+  ['PL', 'Poland'], ['ES', 'Spain'], ['CZ', 'Czechia'], ['ZA', 'South Africa'],
+]
 
 export default function Settings({ settings, onChange, onBack, onRefresh, focusKey }) {
   const keyPanelRef = useRef(null)
@@ -14,6 +23,7 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
 
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
+  const [country, setCountry] = useState('US')
   const [keyDraft, setKeyDraft] = useState(settings.apiKey)
   const [savedFlash, setSavedFlash] = useState(false)
   const [phoneUrl, setPhoneUrl] = useState('')
@@ -30,21 +40,22 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
   function addTown(e) {
     e.preventDefault()
     const c = city.trim()
-    const s = state.trim().toUpperCase()
+    const s = country === 'US' ? state.trim().toUpperCase() : ''
     if (!c) return
+    const town = { city: c, state: s, country }
     const exists = settings.towns.some(
-      (t) => t.city.toLowerCase() === c.toLowerCase() && (t.state || '') === s
+      (t) => t.city.toLowerCase() === c.toLowerCase() && (t.state || '') === s && (t.country || 'US') === country
     )
     if (!exists) {
       // Re-adding a town restores the venues that were set aside when it
       // was removed, so a town's setup is never lost.
-      const archiveKey = `${c}, ${s}`.toLowerCase()
+      const archiveKey = townKey(town).toLowerCase()
       const restored = settings.townArchive?.[archiveKey] || []
       const have = new Set(settings.venues.map((v) => v.url))
       const venues = [...settings.venues, ...restored.filter((v) => !have.has(v.url))]
       const townArchive = { ...settings.townArchive }
       delete townArchive[archiveKey]
-      onChange({ ...settings, towns: [...settings.towns, { city: c, state: s }], venues, townArchive })
+      onChange({ ...settings, towns: [...settings.towns, town], venues, townArchive })
     }
     setCity('')
     setState('')
@@ -62,7 +73,7 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
     const venues = settings.venues.filter((v) => !archived.includes(v))
     const townArchive = { ...settings.townArchive }
     if (archived.length) {
-      townArchive[`${town.city}, ${town.state || ''}`.toLowerCase()] = archived
+      townArchive[townKey(town).toLowerCase()] = archived
     }
     onChange({ ...settings, towns: remaining, venues, townArchive })
   }
@@ -123,7 +134,7 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
         <ul className="town-list">
           {settings.towns.map((t, i) => (
             <li key={i}>
-              <span>{t.city}{t.state ? `, ${t.state}` : ''}</span>
+              <span>{townKey(t)}</span>
               <button className="remove" onClick={() => removeTown(i)} aria-label={`Remove ${t.city}`}>×</button>
             </li>
           ))}
@@ -135,14 +146,25 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
             placeholder="City (e.g. Nashville)"
             aria-label="City"
           />
-          <select value={state} onChange={(e) => setState(e.target.value)} aria-label="State">
-            <option value="">State…</option>
-            {STATES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+          {country === 'US' && (
+            <select value={state} onChange={(e) => setState(e.target.value)} aria-label="State">
+              <option value="">State…</option>
+              {STATES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
+          <select value={country} onChange={(e) => setCountry(e.target.value)} aria-label="Country">
+            {COUNTRIES.map(([code, label]) => (
+              <option key={code} value={code}>{label}</option>
             ))}
           </select>
           <button className="btn" type="submit">Add</button>
         </form>
+        <p className="hint dim">
+          Any city works — the big-hall listings cover the United States and
+          most countries where Ticketmaster sells tickets.
+        </p>
       </section>
 
       <section className="panel">

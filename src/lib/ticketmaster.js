@@ -4,7 +4,9 @@
 const BASE = 'https://app.ticketmaster.com/discovery/v2/events.json'
 
 export function townKey(t) {
-  return t.state ? `${t.city}, ${t.state}` : t.city
+  if (t.state) return `${t.city}, ${t.state}`
+  if (t.country && t.country !== 'US') return `${t.city}, ${t.country}`
+  return t.city
 }
 
 async function request(params, town) {
@@ -21,7 +23,7 @@ export async function fetchTownEvents({ apiKey, town, startISO, endISO, category
   const params = new URLSearchParams({
     apikey: apiKey,
     city: town.city,
-    countryCode: 'US',
+    countryCode: town.country || 'US',
     sort: 'date,asc',
     size: '200',
     startDateTime: startISO,
@@ -39,7 +41,7 @@ export async function searchTownEvents({ apiKey, town, keyword }) {
     apikey: apiKey,
     keyword,
     city: town.city,
-    countryCode: 'US',
+    countryCode: town.country || 'US',
     sort: 'date,asc',
     size: '100',
     startDateTime: iso(new Date()),
