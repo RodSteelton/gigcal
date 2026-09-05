@@ -86,6 +86,36 @@ export function isNonMusic(name) {
   return NON_MUSIC.test(name)
 }
 
+// Map venue/aggregator events into the picker's categories. Aggregator
+// events carry SceneThink category names (Music, Dance, Stage, Words,
+// Galleries, …); venue-site events usually carry none and count as
+// music. Comedy/Family/Film have no aggregator category, so event
+// names fill in.
+export function siteCategoryMatch(e, category) {
+  if (category === 'Everything') return true
+  const g = (e.genre || '').toLowerCase()
+  const n = e.name
+  switch (category) {
+    case 'Music':
+      return (!g || g.includes('music')) && !isNonMusic(n)
+    case 'Comedy':
+      return /comedy/.test(g) || /\b(comedy|stand-?up|improv)\b/i.test(n)
+    case 'Arts & Theatre':
+      return (
+        /dance|stage|theat|words|galler/.test(g) ||
+        /\b(theatre|theater|ballet|opera|gallery|art show|poetry|play)\b/i.test(n)
+      )
+    case 'Family':
+      return /family|kids|child/.test(g) || /\b(family|kids|children)\b/i.test(n)
+    case 'Film':
+      return /film|movie|cinema/.test(g) || /\b(film|movie|screening|cinema)\b/i.test(n)
+    case 'Sports':
+      return /sport/.test(g)
+    default:
+      return false
+  }
+}
+
 export function areaCities(city) {
   const c = city.trim().toLowerCase()
   for (const area of AREAS) {

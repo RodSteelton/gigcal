@@ -4,7 +4,7 @@ import EventList from './components/EventList.jsx'
 import Settings from './components/Settings.jsx'
 import { loadSettings, saveSettings, cacheGet, cachePut, cacheClear } from './lib/storage.js'
 import { fetchTownEvents, searchTownEvents, townKey } from './lib/ticketmaster.js'
-import { fetchVenueEvents, venueTownKey, isNonMusic } from './lib/localVenues.js'
+import { fetchVenueEvents, venueTownKey, siteCategoryMatch } from './lib/localVenues.js'
 import { dedupeEvents } from './lib/dedupe.js'
 import { sampleEvents } from './lib/sample.js'
 
@@ -105,11 +105,10 @@ export default function App() {
         }
       }
 
-      // Venue websites don't classify their events; they contribute to
-      // Music (with the obvious non-music happenings filtered out) and
-      // to Everything (unfiltered).
-      if (category === 'Music' || category === 'Everything') {
-        // aggregators last, so direct listings win the duplicate merge
+      // Venue and town-calendar events, mapped into the active category
+      // (aggregator category names + event-name matching); aggregators
+      // last, so direct listings win the duplicate merge.
+      {
         const orderedVenues = [...settings.venues].sort(
           (a, b) => (a.aggregator ? 1 : 0) - (b.aggregator ? 1 : 0)
         )
@@ -127,10 +126,7 @@ export default function App() {
           }
           all.push(
             ...evs.filter(
-              (e) =>
-                e.date.startsWith(monthPrefix) &&
-                (category !== 'Music' ||
-                  (!isNonMusic(e.name) && (!e.genre || /music/i.test(e.genre))))
+              (e) => e.date.startsWith(monthPrefix) && siteCategoryMatch(e, category)
             )
           )
         }
