@@ -11,16 +11,45 @@ const UA =
 const cache = new Map()
 const TTL = 3 * 60 * 60 * 1000
 
-export async function extractEvents(target) {
-  const hit = cache.get(target)
+// Epoch and UTC timestamps must render in a wall-clock timezone; the
+// caller's (viewer ≈ near their venues). Falls back to the process
+// timezone, which is UTC on cloud runners — hence the tz parameter.
+function safeTz(tz) {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: tz })
+    return tz
+  } catch {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  }
+}
+
+function dateParts(d, tz) {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
+  const p = {}
+  for (const part of fmt.formatToParts(d)) p[part.type] = part.value
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}:00` }
+}
+
+export async function extractEvents(target, tzWanted) {
+  const tz = safeTz(tzWanted || '')
+  const cacheKey = `${target}|${tz}`
+  const hit = cache.get(cacheKey)
   if (hit && Date.now() - hit.at < TTL) return hit.result
   let result
   try {
-    result = await extract(target)
+    result = await extract(target, tz)
   } catch (e) {
     result = { ok: false, error: String((e && e.message) || e) }
   }
-  cache.set(target, result)
+  cache.set(cacheKey, { at: Date.now(), result })
   return result
 }
 
@@ -44,7 +73,7 @@ async function fetchText(url) {
   }
 }
 
-async function extract(target) {
+async function extract(target, tz) {
   const { text, type } = await fetchText(target)
 
   if (type.includes('text/calendar') || text.startsWith('BEGIN:VCALENDAR')) {
@@ -52,12 +81,12 @@ async function extract(target) {
   }
 
   if (/xml|rss/.test(type) || /^\s*<\?xml|^\s*<rss/.test(text)) {
-    const evs = fromRss(text)
+    const evs = fromRss(text, tz)
     if (evs.length) return done('rss', evs)
   }
 
   if (type.includes('json') || text[0] === '{' || text[0] === '[') {
-    const evs = fromSquarespace(text, target)
+    const evs = fromSquarespace(text, target, tz)
     if (evs.length) return done('squarespace', evs)
   }
 
@@ -77,7 +106,7 @@ async function extract(target) {
   if (rssUrl) {
     const rss = await fetchText(rssUrl).catch(() => null)
     if (rss) {
-      const evs = fromRss(rss.text)
+      const evs = fromRss(rss.text, tz)
       if (evs.length) return done('rss', evs)
     }
   }
@@ -86,7 +115,7 @@ async function extract(target) {
   const sqspUrl = target + (target.includes('?') ? '&' : '?') + 'format=json'
   const sqsp = await fetchText(sqspUrl).catch(() => null)
   if (sqsp && (sqsp.type.includes('json') || sqsp.text[0] === '{')) {
-    const evs = fromSquarespace(sqsp.text, target)
+    const evs = fromSquarespace(sqsp.text, target, tz)
     if (evs.length) return done('squarespace', evs)
   }
 
@@ -155,7 +184,7 @@ function parseICS(text) {
 // ---------- RSS with event dates ----------
 // Accepts only items carrying an event-start field (ev:startdate or
 // xCal dtstart); a plain blog feed yields nothing and the chain moves on.
-function fromRss(xml) {
+function fromRss(xml, tz) {
   const items = xml.match(/<item[\s>][\s\S]*?<\/item>/g) || []
   const out = []
   for (const item of items) {
@@ -167,13 +196,8 @@ function fromRss(xml) {
     if (!start) continue
     const d = new Date(start)
     if (Number.isNaN(d.getTime())) continue
-    out.push({
-      name: get('title'),
-      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-      time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`,
-      url: get('link'),
-      price: '',
-    })
+    const { date, time } = dateParts(d, tz)
+    out.push({ name: get('title'), date, time, url: get('link'), price: '' })
   }
   return out
 }
@@ -273,7 +297,7 @@ function fromAfton(html) {
 }
 
 // ---------- Squarespace ----------
-function fromSquarespace(text, target) {
+function fromSquarespace(text, target, tz) {
   let data
   try {
     data = JSON.parse(text)
@@ -282,28 +306,28 @@ function fromSquarespace(text, target) {
   }
   const origin = new URL(target).origin
   const out = []
-  scanForSqspItems(data, out, origin, 0)
+  scanForSqspItems(data, out, origin, 0, tz)
   return out
 }
 
-function scanForSqspItems(node, out, origin, depth) {
+function scanForSqspItems(node, out, origin, depth, tz) {
   if (depth > 6 || !node || typeof node !== 'object') return
   if (Array.isArray(node)) {
-    node.forEach((n) => scanForSqspItems(n, out, origin, depth + 1))
+    node.forEach((n) => scanForSqspItems(n, out, origin, depth + 1, tz))
     return
   }
   if (node.title && typeof node.startDate === 'number' && node.startDate > 1e12) {
-    const d = new Date(node.startDate)
+    const { date, time } = dateParts(new Date(node.startDate), tz)
     out.push({
       name: String(node.title),
-      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-      time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`,
+      date,
+      time,
       url: node.fullUrl ? origin + node.fullUrl : '',
       price: '',
     })
     return
   }
-  for (const v of Object.values(node)) scanForSqspItems(v, out, origin, depth + 1)
+  for (const v of Object.values(node)) scanForSqspItems(v, out, origin, depth + 1, tz)
 }
 
 // ---------- WordPress "The Events Calendar" REST ----------

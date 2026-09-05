@@ -60,7 +60,9 @@ const server = http.createServer(async (req, res) => {
       parsed = null
     }
     const bad = !parsed || !/^https?:$/.test(parsed.protocol) || isPrivateHost(parsed.hostname)
-    const result = bad ? { ok: false, error: 'bad-url' } : await extractEvents(target)
+    const result = bad
+      ? { ok: false, error: 'bad-url' }
+      : await extractEvents(target, url.searchParams.get('tz') || '')
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
     res.end(JSON.stringify(result))
     return

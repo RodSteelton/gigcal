@@ -84,8 +84,19 @@ export function areaCities(city) {
   return [c]
 }
 
-// Online (static hosting) there is no live /api/extract; a scheduled
-// build refreshes venue-events.json every few hours instead.
+// Reader lookup order: the local GigCal server (running at home), then
+// the Cloudflare Worker (the hosted app's live reader), then the
+// pre-fetched venue-events.json from the scheduled build — which also
+// covers venues whose sites block cloud servers (AftonTickets).
+const WORKER_URL = 'https://gigcal-reader.rodsteelton.workers.dev/extract'
+const TZ = (() => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+  } catch {
+    return ''
+  }
+})()
+
 let staticCachePromise = null
 function staticCache() {
   if (!staticCachePromise) {
@@ -99,14 +110,22 @@ function staticCache() {
 }
 
 export async function fetchVenueEvents(venue) {
+  const q = `url=${encodeURIComponent(venue.url)}&tz=${encodeURIComponent(TZ)}`
   let data = null
   try {
-    const res = await fetch(`/api/extract?url=${encodeURIComponent(venue.url)}`)
+    const res = await fetch(`/api/extract?${q}`)
     if (res.ok) data = await res.json()
   } catch {}
   if (!data) {
+    try {
+      const res = await fetch(`${WORKER_URL}?${q}`)
+      if (res.ok) data = await res.json()
+    } catch {}
+  }
+  if (!data || !data.ok) {
     const all = await staticCache()
-    data = all[venue.url] || null
+    const seeded = all[venue.url]
+    if (seeded?.ok) data = seeded
   }
   if (!data) throw new Error('extract-unavailable')
   if (!data.ok) throw new Error(data.error || 'extract-failed')

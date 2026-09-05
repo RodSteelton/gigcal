@@ -207,8 +207,9 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
           </p>
         )}
         <p className="hint dim">
-          Add any other venue by pasting the web address of its events page.
-          Many sites work; if one can't be read, the calendar will say so.
+          Add any other venue — anywhere — by pasting the web address of its
+          events page. Many sites work; if one can't be read, the calendar
+          will say so.
         </p>
         <form className="venue-add" onSubmit={addManualVenue}>
           <input value={vName} onChange={(e) => setVName(e.target.value)} placeholder="Venue name" aria-label="Venue name" />
