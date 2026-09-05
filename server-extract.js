@@ -74,6 +74,14 @@ async function fetchText(url) {
 }
 
 async function extract(target, tz) {
+  // SceneThink town calendars (events.c-ville.com style) — the page is
+  // JS-rendered, but the platform serves a clean JSON feed.
+  const stDirect = target.match(/^https?:\/\/([a-z0-9-]+)\.scenethink\.com\/([a-z0-9_-]+)/i)
+  if (stDirect) {
+    const evs = await sceneThink(stDirect[1], stDirect[2], target)
+    if (evs.length) return done('scenethink', evs)
+  }
+
   const { text, type } = await fetchText(target)
 
   if (type.includes('text/calendar') || text.startsWith('BEGIN:VCALENDAR')) {
@@ -98,6 +106,19 @@ async function extract(target, tz) {
   if (text.includes('featured-events-box-link')) {
     const evs = fromAfton(text)
     if (evs.length) return done('afton', evs)
+  }
+
+  // A page embedding a SceneThink calendar (script tags give it away).
+  // Asset URLs share the host, so skip system paths and try real slugs.
+  const stSeen = new Set()
+  for (const m of text.matchAll(/https?:\/\/([a-z0-9-]+)\.scenethink\.com\/([a-z0-9_-]+)\//gi)) {
+    const slug = m[2].toLowerCase()
+    const key = `${m[1]}/${slug}`
+    if (['assets', 'packs', 'fonts', 'system', 'images'].includes(slug) || stSeen.has(key)) continue
+    stSeen.add(key)
+    if (stSeen.size > 3) break
+    const evs = await sceneThink(m[1], slug, target).catch(() => [])
+    if (evs.length) return done('scenethink', evs)
   }
 
   // RSS feed advertised or linked in the HTML (e.g. carbonhouse venue
@@ -256,6 +277,57 @@ function walkLd(node, out) {
     })
   }
   if (node.subEvent) walkLd(node.subEvent, out)
+}
+
+// ---------- SceneThink town calendars ----------
+// events.json holds every event with a full-offset local timestamp
+// ("2026-09-05T13:00:00.000-05:00"), so the venue-local clock time is
+// literally the characters before the offset — no tz math needed.
+async function fetchJson(url) {
+  const { text } = await fetchText(url)
+  return JSON.parse(text)
+}
+
+async function sceneThink(sub, slug, target) {
+  const base = `https://${sub}.scenethink.com/${slug}`
+  const data = await fetchJson(`${base}/events.json`)
+  if (!Array.isArray(data?.events)) return []
+  const cats = {}
+  try {
+    for (const c of await fetchJson(`${base}/categories.json`)) cats[c.id] = c.name
+  } catch {}
+  // Detail links: prefer the branded proxy page the user pasted
+  let detail = (id) => `${base}/events/${id}`
+  try {
+    const t = new URL(target)
+    if (!/scenethink\.com$/i.test(t.hostname)) {
+      const ph = t.searchParams.get('proxy_host')
+      const ps = t.searchParams.get('proxy_slug')
+      const q = ph && ps ? `?proxy_host=${encodeURIComponent(ph)}&proxy_slug=${encodeURIComponent(ps)}` : ''
+      detail = (id) => `${t.origin}/events/${id}${q}`
+    }
+  } catch {}
+  const today = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const horizon = new Date(Date.now() + 240 * 86400000).toISOString().slice(0, 10)
+  const out = []
+  for (const e of data.events) {
+    if (!e || !e.name || !e.starttime) continue
+    // spans of days/months are "every Monday"-style listings, not shows
+    const span = (new Date(e.endtime || e.starttime) - new Date(e.starttime)) / 3600000
+    if (span > 36) continue
+    const date = String(e.starttime).slice(0, 10)
+    if (date < today || date > horizon) continue
+    out.push({
+      name: String(e.name),
+      date,
+      time: e.allday ? '' : String(e.starttime).slice(11, 19),
+      url: detail(e.id),
+      price: '',
+      venue: e.venue && e.venue.name ? String(e.venue.name) : '',
+      genre: cats[e.categories?.[0]?.id] || '',
+    })
+  }
+  return out
 }
 
 // ---------- AftonTickets venue pages ----------

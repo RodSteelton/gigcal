@@ -5,6 +5,7 @@ import Settings from './components/Settings.jsx'
 import { loadSettings, saveSettings, cacheGet, cachePut, cacheClear } from './lib/storage.js'
 import { fetchTownEvents, searchTownEvents, townKey } from './lib/ticketmaster.js'
 import { fetchVenueEvents, venueTownKey, isNonMusic } from './lib/localVenues.js'
+import { dedupeEvents } from './lib/dedupe.js'
 import { sampleEvents } from './lib/sample.js'
 
 function firstOfMonth(d) {
@@ -108,7 +109,11 @@ export default function App() {
       // Music (with the obvious non-music happenings filtered out) and
       // to Everything (unfiltered).
       if (category === 'Music' || category === 'Everything') {
-        for (const venue of settings.venues) {
+        // aggregators last, so direct listings win the duplicate merge
+        const orderedVenues = [...settings.venues].sort(
+          (a, b) => (a.aggregator ? 1 : 0) - (b.aggregator ? 1 : 0)
+        )
+        for (const venue of orderedVenues) {
           const key = `site:${venue.url}`
           let evs = cacheGet(key)
           if (!evs) {
@@ -122,7 +127,10 @@ export default function App() {
           }
           all.push(
             ...evs.filter(
-              (e) => e.date.startsWith(monthPrefix) && (category !== 'Music' || !isNonMusic(e.name))
+              (e) =>
+                e.date.startsWith(monthPrefix) &&
+                (category !== 'Music' ||
+                  (!isNonMusic(e.name) && (!e.genre || /music/i.test(e.genre))))
             )
           )
         }
@@ -133,18 +141,7 @@ export default function App() {
       }
 
       if (cancelled) return
-      // dedupe by id, then by act+date (a venue's show may also be on Ticketmaster)
-      const seenId = new Set()
-      const seenShow = new Set()
-      const deduped = all.filter((e) => {
-        if (seenId.has(e.id)) return false
-        seenId.add(e.id)
-        const show = `${e.name.toLowerCase().replace(/\W+/g, ' ').trim()}|${e.date}`
-        if (seenShow.has(show)) return false
-        seenShow.add(show)
-        return true
-      })
-      setEvents(sortByStart(deduped))
+      setEvents(sortByStart(dedupeEvents(all)))
       setLoading(false)
       setSiteErrors(failedSites)
       if (err === 'bad-key') setError("That key didn't work — double-check it in Settings.")
@@ -166,7 +163,18 @@ export default function App() {
     setSearchResults([])
     const ql = q.toLowerCase()
     const results = []
-    for (const venue of settings.venues) {
+    // Ticketmaster first: richer listings win the duplicate merge
+    if (settings.apiKey) {
+      for (const town of settings.towns) {
+        try {
+          results.push(...(await searchTownEvents({ apiKey: settings.apiKey, town, keyword: q })))
+        } catch {}
+      }
+    }
+    const orderedVenues = [...settings.venues].sort(
+      (a, b) => (a.aggregator ? 1 : 0) - (b.aggregator ? 1 : 0)
+    )
+    for (const venue of orderedVenues) {
       const key = `site:${venue.url}`
       let evs = cacheGet(key)
       if (!evs) {
@@ -181,25 +189,8 @@ export default function App() {
         ...evs.filter((ev) => `${ev.name} ${ev.venue} ${ev.city}`.toLowerCase().includes(ql))
       )
     }
-    if (settings.apiKey) {
-      for (const town of settings.towns) {
-        try {
-          results.push(...(await searchTownEvents({ apiKey: settings.apiKey, town, keyword: q })))
-        } catch {}
-      }
-    }
     const today = dateKey(new Date())
-    const seenId = new Set()
-    const seenShow = new Set()
-    const final = results.filter((ev) => {
-      if (ev.date < today || seenId.has(ev.id)) return false
-      seenId.add(ev.id)
-      const show = `${ev.name.toLowerCase().replace(/\W+/g, ' ').trim()}|${ev.date}`
-      if (seenShow.has(show)) return false
-      seenShow.add(show)
-      return true
-    })
-    setSearchResults(sortByStart(final))
+    setSearchResults(sortByStart(dedupeEvents(results.filter((ev) => ev.date >= today))))
     setSearching(false)
   }
 

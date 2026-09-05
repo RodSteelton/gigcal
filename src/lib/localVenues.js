@@ -30,6 +30,16 @@ export const SUGGESTED_VENUES = [
   { city: 'Crozet', state: 'VA', name: 'King Family Vineyards', url: 'https://kingfamilyvineyards.com/event-calendar/' },
   { city: 'Crozet', state: 'VA', name: 'Grace Estate Winery', url: 'https://www.graceestatewinery.com/event-calendar' },
   { city: 'Waynesboro', state: 'VA', name: 'The Foundry', url: 'https://www.thefoundrysound.com/shows' },
+  // C-VILLE Weekly's town-wide calendar (SceneThink) — an aggregator:
+  // hundreds of events with per-event venue names. Loaded after the
+  // direct sources so richer listings win the duplicate merge.
+  {
+    city: 'Charlottesville',
+    state: 'VA',
+    name: 'C-VILLE Weekly area calendar',
+    url: 'https://events.c-ville.com/calendars/all-events?proxy_host=events.c-ville.com&proxy_slug=cville',
+    aggregator: true,
+  },
 ]
 
 export const TM_COVERED = {
@@ -142,7 +152,7 @@ export async function fetchVenueEvents(venue) {
     city: venue.city,
     state: venue.state || '',
     townKey: venueTownKey(venue),
-    genre: '',
+    genre: e.genre || '',
     url: e.url || venue.url,
     price: e.price || '',
     fromSite: true,
