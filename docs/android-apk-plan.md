@@ -1,5 +1,8 @@
 # Task: Build a sideloadable Android APK for GigCal
 
+**Status: Done (2026-09-05).** See the "Android app" section of README.md for
+the package id, keystore location, release URL, and rebuild command.
+
 Self-contained plan — executable by any Claude session opened in this folder
 (`C:\Users\ssber\Dropbox\Programs\GigCal`). No new user accounts needed.
 

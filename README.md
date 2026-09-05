@@ -75,6 +75,40 @@ First-run setup inside the app:
   sells through a ticketing platform (AftonTickets, Etix, …) — the platform
   page is often readable when the venue's own site isn't.
 
+## Android app
+
+A sideloadable Android app (Trusted Web Activity, via Google's Bubblewrap) wraps
+the live site at https://rodsteelton.github.io/gigcal/ — it's a real home-screen
+app, not on the Play Store, and it auto-updates because it's just a shell around
+the live site. Download link is in the app's own Settings screen, and the APK is
+attached to the `android-v1` release: https://github.com/RodSteelton/gigcal/releases/tag/android-v1
+
+- Package id: `io.github.rodsteelton.gigcal`
+- Signing keystore: `C:\Users\ssber\tools\gigcal-signing\android.keystore`
+  (alias `gigcal`; password in `.keystore-passwords.txt` beside it). Lives
+  outside Dropbox and outside this repo on purpose — **do not lose it**, since
+  Android requires the same signing key for every future update to the same
+  install.
+- Digital Asset Links (removes the in-app browser address bar): served from a
+  separate repo, `RodSteelton/rodsteelton.github.io` →
+  `.well-known/assetlinks.json`, with the keystore's SHA-256 fingerprint.
+- `android/` in this repo is gitignored except `twa-manifest.json` — everything
+  else is generated. To rebuild after a site/icon/name change:
+  ```
+  npm run android:gen      # regenerates android/ from twa-manifest.json + the live manifest
+  cd android
+  $env:JAVA_HOME = "C:\Users\ssber\tools\jdk-17.0.11+9"
+  $env:ANDROID_HOME = "C:\Users\ssber\tools\android-sdk"
+  $env:BUBBLEWRAP_KEYSTORE_PASSWORD = "<from .keystore-passwords.txt>"
+  $env:BUBBLEWRAP_KEY_PASSWORD = "<same>"
+  .\gradlew.bat assembleRelease
+  ```
+  Then zipalign-verify and sign with `apksigner` (see
+  `docs/android-apk-plan.md` for the exact commands), and attach the new APK to
+  a new GitHub release.
+- Local JDK 17 and Android SDK command-line tools live outside Dropbox at
+  `C:\Users\ssber\tools\jdk-17.0.11+9` and `C:\Users\ssber\tools\android-sdk`.
+
 ## Planned: online hosting
 
 Decision (2026-09-03): publish online once feature work settles; each user gets
