@@ -146,6 +146,42 @@ html, body {
 .key-cta .btn { white-space: nowrap; }
 
 .panel.highlight { border-color: var(--amber); }
+
+/* ---------- search & category row ---------- */
+.search-row {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.search-row .cat { max-width: 34%; }
+
+.search-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+}
+
+.search-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--dim);
+  font-size: 14px;
+  margin: 4px 0 6px;
+}
+
+/* ---------- footer ---------- */
+.app-footer {
+  margin-top: 32px;
+  padding: 14px 4px 6px;
+  border-top: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.7;
+}
 .banner.error { border-color: var(--red); color: var(--red); }
 .banner.loading { color: var(--green); }
 .banner.clear-day { cursor: pointer; color: var(--amber); }

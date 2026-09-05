@@ -1,7 +1,7 @@
 import { SUGGESTED_VENUES } from './localVenues.js'
 
 const SETTINGS_KEY = 'gigcal-settings'
-const CACHE_KEY = 'gigcal-events-cache'
+const CACHE_KEY = 'gigcal-events-cache-v2'
 const CACHE_TTL = 6 * 60 * 60 * 1000 // re-fetch a town's month after 6 hours
 
 export function loadSettings() {
@@ -13,6 +13,8 @@ export function loadSettings() {
         apiKey: s.apiKey || '',
         towns: Array.isArray(s.towns) ? s.towns : [],
         venues: Array.isArray(s.venues) ? s.venues : [],
+        townArchive: s.townArchive && typeof s.townArchive === 'object' ? s.townArchive : {},
+        category: s.category || 'Music',
       }
     }
   } catch {}
@@ -22,6 +24,8 @@ export function loadSettings() {
     apiKey: '',
     towns: [{ city: 'Charlottesville', state: 'VA' }],
     venues: SUGGESTED_VENUES.map((v) => ({ ...v })),
+    townArchive: {},
+    category: 'Music',
   }
 }
 

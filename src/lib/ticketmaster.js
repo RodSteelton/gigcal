@@ -7,18 +7,7 @@ export function townKey(t) {
   return t.state ? `${t.city}, ${t.state}` : t.city
 }
 
-export async function fetchTownEvents({ apiKey, town, startISO, endISO }) {
-  const params = new URLSearchParams({
-    apikey: apiKey,
-    classificationName: 'Music',
-    city: town.city,
-    countryCode: 'US',
-    sort: 'date,asc',
-    size: '200',
-    startDateTime: startISO,
-    endDateTime: endISO,
-  })
-  if (town.state) params.set('stateCode', town.state)
+async function request(params, town) {
   const res = await fetch(`${BASE}?${params}`)
   if (res.status === 401) throw new Error('bad-key')
   if (res.status === 429) throw new Error('rate-limit')
@@ -26,6 +15,38 @@ export async function fetchTownEvents({ apiKey, town, startISO, endISO }) {
   const data = await res.json()
   const events = data?._embedded?.events || []
   return events.map((e) => normalize(e, town))
+}
+
+export async function fetchTownEvents({ apiKey, town, startISO, endISO, category = 'Music' }) {
+  const params = new URLSearchParams({
+    apikey: apiKey,
+    city: town.city,
+    countryCode: 'US',
+    sort: 'date,asc',
+    size: '200',
+    startDateTime: startISO,
+    endDateTime: endISO,
+  })
+  if (category && category !== 'Everything') params.set('classificationName', category)
+  if (town.state) params.set('stateCode', town.state)
+  return request(params, town)
+}
+
+// Free-text search (band, venue, "trivia", …) over the next six months.
+export async function searchTownEvents({ apiKey, town, keyword }) {
+  const iso = (d) => d.toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const params = new URLSearchParams({
+    apikey: apiKey,
+    keyword,
+    city: town.city,
+    countryCode: 'US',
+    sort: 'date,asc',
+    size: '100',
+    startDateTime: iso(new Date()),
+    endDateTime: iso(new Date(Date.now() + 180 * 86400000)),
+  })
+  if (town.state) params.set('stateCode', town.state)
+  return request(params, town)
 }
 
 function normalize(e, town) {

@@ -3,8 +3,8 @@ import Calendar, { dateKey } from './components/Calendar.jsx'
 import EventList from './components/EventList.jsx'
 import Settings from './components/Settings.jsx'
 import { loadSettings, saveSettings, cacheGet, cachePut, cacheClear } from './lib/storage.js'
-import { fetchTownEvents, townKey } from './lib/ticketmaster.js'
-import { fetchVenueEvents, venueTownKey } from './lib/localVenues.js'
+import { fetchTownEvents, searchTownEvents, townKey } from './lib/ticketmaster.js'
+import { fetchVenueEvents, venueTownKey, isNonMusic } from './lib/localVenues.js'
 import { sampleEvents } from './lib/sample.js'
 
 function firstOfMonth(d) {
@@ -35,6 +35,10 @@ export default function App() {
   const [siteErrors, setSiteErrors] = useState([])
   const [settingsFocus, setSettingsFocus] = useState('')
   const [installEvt, setInstallEvt] = useState(null)
+  const [query, setQuery] = useState('')
+  const [lastQuery, setLastQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState(null)
 
   useEffect(() => {
     const onPrompt = (e) => {
@@ -81,13 +85,15 @@ export default function App() {
       let err = ''
       const failedSites = []
 
+      const category = settings.category || 'Music'
+
       if (settings.apiKey) {
         for (const town of settings.towns) {
-          const key = `${townKey(town)}|${monthTag}`
+          const key = `${townKey(town)}|${monthTag}|${category}`
           let evs = cacheGet(key)
           if (!evs) {
             try {
-              evs = await fetchTownEvents({ apiKey: settings.apiKey, town, startISO, endISO })
+              evs = await fetchTownEvents({ apiKey: settings.apiKey, town, startISO, endISO, category })
               cachePut(key, evs)
             } catch (e) {
               err = e.message
@@ -98,19 +104,28 @@ export default function App() {
         }
       }
 
-      for (const venue of settings.venues) {
-        const key = `site:${venue.url}`
-        let evs = cacheGet(key)
-        if (!evs) {
-          try {
-            evs = await fetchVenueEvents(venue)
-            cachePut(key, evs)
-          } catch {
-            failedSites.push(venue.name)
-            evs = []
+      // Venue websites don't classify their events; they contribute to
+      // Music (with the obvious non-music happenings filtered out) and
+      // to Everything (unfiltered).
+      if (category === 'Music' || category === 'Everything') {
+        for (const venue of settings.venues) {
+          const key = `site:${venue.url}`
+          let evs = cacheGet(key)
+          if (!evs) {
+            try {
+              evs = await fetchVenueEvents(venue)
+              cachePut(key, evs)
+            } catch {
+              failedSites.push(venue.name)
+              evs = []
+            }
           }
+          all.push(
+            ...evs.filter(
+              (e) => e.date.startsWith(monthPrefix) && (category !== 'Music' || !isNonMusic(e.name))
+            )
+          )
         }
-        all.push(...evs.filter((e) => e.date.startsWith(monthPrefix)))
       }
 
       if (!settings.apiKey && !settings.venues.length) {
@@ -141,6 +156,58 @@ export default function App() {
       cancelled = true
     }
   }, [settings, monthStart, refreshTick])
+
+  async function runSearch(e) {
+    if (e) e.preventDefault()
+    const q = query.trim()
+    if (q.length < 2) return
+    setSearching(true)
+    setLastQuery(q)
+    setSearchResults([])
+    const ql = q.toLowerCase()
+    const results = []
+    for (const venue of settings.venues) {
+      const key = `site:${venue.url}`
+      let evs = cacheGet(key)
+      if (!evs) {
+        try {
+          evs = await fetchVenueEvents(venue)
+          cachePut(key, evs)
+        } catch {
+          evs = []
+        }
+      }
+      results.push(
+        ...evs.filter((ev) => `${ev.name} ${ev.venue} ${ev.city}`.toLowerCase().includes(ql))
+      )
+    }
+    if (settings.apiKey) {
+      for (const town of settings.towns) {
+        try {
+          results.push(...(await searchTownEvents({ apiKey: settings.apiKey, town, keyword: q })))
+        } catch {}
+      }
+    }
+    const today = dateKey(new Date())
+    const seenId = new Set()
+    const seenShow = new Set()
+    const final = results.filter((ev) => {
+      if (ev.date < today || seenId.has(ev.id)) return false
+      seenId.add(ev.id)
+      const show = `${ev.name.toLowerCase().replace(/\W+/g, ' ').trim()}|${ev.date}`
+      if (seenShow.has(show)) return false
+      seenShow.add(show)
+      return true
+    })
+    setSearchResults(sortByStart(final))
+    setSearching(false)
+  }
+
+  function closeSearch() {
+    setQuery('')
+    setLastQuery('')
+    setSearchResults(null)
+  }
 
   function refresh() {
     cacheClear()
@@ -231,6 +298,39 @@ export default function App() {
         </div>
       ) : (
         <main>
+          <form className="search-row" onSubmit={runSearch}>
+            <select
+              className="town-filter cat"
+              value={settings.category || 'Music'}
+              onChange={(e) => updateSettings({ ...settings, category: e.target.value })}
+              aria-label="Event type"
+            >
+              {['Music', 'Comedy', 'Arts & Theatre', 'Family', 'Film', 'Sports', 'Everything'].map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search band, venue, anything…"
+              aria-label="Search events"
+            />
+            <button className="btn" type="submit">Go</button>
+          </form>
+          {searchResults !== null ? (
+            <>
+              <div className="search-head">
+                <span>
+                  {searching
+                    ? 'Searching…'
+                    : `${searchResults.length} upcoming ${searchResults.length === 1 ? 'match' : 'matches'} for “${lastQuery}”`}
+                </span>
+                <button className="btn ghost" onClick={closeSearch}>× Back to calendar</button>
+              </div>
+              <EventList events={searchResults} showTown={true} />
+            </>
+          ) : (
+            <>
           {installEvt && (
             <div className="key-cta">
               <p>Put GigCal on your home screen — opens like an app, no browser bar.</p>
@@ -267,8 +367,14 @@ export default function App() {
             </button>
           )}
           <EventList events={listed} showTown={townKeys.length > 1 && townFilter === 'all'} />
+            </>
+          )}
         </main>
       )}
+      <footer className="app-footer">
+        <div>© 2026 SS Berr · All rights reserved</div>
+        <div>GigCal is ad-free. If you like it, send me $5 via Venmo — or whatever. 🎶</div>
+      </footer>
     </div>
   )
 }

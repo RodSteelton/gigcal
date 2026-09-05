@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { suggestionsForTowns, tmCoveredForTowns } from '../lib/localVenues.js'
+import { suggestionsForTowns, tmCoveredForTowns, areaCities } from '../lib/localVenues.js'
 
 const STATES = 'AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC'.split(' ')
 
@@ -36,14 +36,35 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
       (t) => t.city.toLowerCase() === c.toLowerCase() && (t.state || '') === s
     )
     if (!exists) {
-      onChange({ ...settings, towns: [...settings.towns, { city: c, state: s }] })
+      // Re-adding a town restores the venues that were set aside when it
+      // was removed, so a town's setup is never lost.
+      const archiveKey = `${c}, ${s}`.toLowerCase()
+      const restored = settings.townArchive?.[archiveKey] || []
+      const have = new Set(settings.venues.map((v) => v.url))
+      const venues = [...settings.venues, ...restored.filter((v) => !have.has(v.url))]
+      const townArchive = { ...settings.townArchive }
+      delete townArchive[archiveKey]
+      onChange({ ...settings, towns: [...settings.towns, { city: c, state: s }], venues, townArchive })
     }
     setCity('')
     setState('')
   }
 
   function removeTown(idx) {
-    onChange({ ...settings, towns: settings.towns.filter((_, i) => i !== idx) })
+    const town = settings.towns[idx]
+    const remaining = settings.towns.filter((_, i) => i !== idx)
+    const removedCities = new Set(areaCities(town.city))
+    const keptCities = new Set(remaining.flatMap((t) => areaCities(t.city)))
+    const archived = settings.venues.filter((v) => {
+      const vc = v.city.trim().toLowerCase()
+      return removedCities.has(vc) && !keptCities.has(vc)
+    })
+    const venues = settings.venues.filter((v) => !archived.includes(v))
+    const townArchive = { ...settings.townArchive }
+    if (archived.length) {
+      townArchive[`${town.city}, ${town.state || ''}`.toLowerCase()] = archived
+    }
+    onChange({ ...settings, towns: remaining, venues, townArchive })
   }
 
   const [vName, setVName] = useState('')
@@ -94,6 +115,10 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
       <section className="panel">
         <h2>My towns</h2>
         <p className="hint">Shows are searched in every town on this list.</p>
+        <p className="hint dim">
+          Removing a town sets its venues aside, not gone — add the town back
+          anytime and its full setup returns.
+        </p>
         {settings.towns.length === 0 && <p className="hint dim">No towns yet — add one below.</p>}
         <ul className="town-list">
           {settings.towns.map((t, i) => (

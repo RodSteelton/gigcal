@@ -70,6 +70,20 @@ export function venueTownKey(v) {
 const NON_MUSIC =
   /\b(trivia|yoga|pilates|barre|game night|run club|trail run|book club|bingo|paint (?:night|class|and sip)|watch party|farmers market|wine club pickup|cornhole|comedy)\b/i
 
+// Applied at display time (only when the Music category is active), so
+// the same cached venue data can serve the "Everything" category too.
+export function isNonMusic(name) {
+  return NON_MUSIC.test(name)
+}
+
+export function areaCities(city) {
+  const c = city.trim().toLowerCase()
+  for (const area of AREAS) {
+    if (area.includes(c)) return [...area]
+  }
+  return [c]
+}
+
 // Online (static hosting) there is no live /api/extract; a scheduled
 // build refreshes venue-events.json every few hours instead.
 let staticCachePromise = null
@@ -98,7 +112,7 @@ export async function fetchVenueEvents(venue) {
   if (!data.ok) throw new Error(data.error || 'extract-failed')
   const include = venue.include ? new RegExp(venue.include, 'i') : null
   return data.events
-    .filter((e) => !NON_MUSIC.test(e.name) && (!include || include.test(e.name)))
+    .filter((e) => !include || include.test(e.name))
     .map((e, i) => ({
     id: `site-${venue.name}-${e.date}-${i}`,
     name: e.name,
