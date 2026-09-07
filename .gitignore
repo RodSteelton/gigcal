@@ -8,3 +8,4 @@ vite.config.js.timestamp-*
 # regenerate everything else (see docs/android-apk-plan.md).
 android/*
 !android/twa-manifest.json
+*.docx
