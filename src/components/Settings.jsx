@@ -5,13 +5,14 @@ import { townKey } from '../lib/ticketmaster.js'
 const STATES = 'AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC'.split(' ')
 
 const COUNTRIES = [
-  ['US', 'United States'], ['CA', 'Canada'], ['GB', 'United Kingdom'], ['IE', 'Ireland'],
-  ['AU', 'Australia'], ['NZ', 'New Zealand'], ['MX', 'Mexico'], ['DE', 'Germany'],
-  ['AT', 'Austria'], ['CH', 'Switzerland'], ['NL', 'Netherlands'], ['BE', 'Belgium'],
-  ['FR', 'France'], ['IT', 'Italy'], ['ES', 'Spain'], ['PT', 'Portugal'],
-  ['DK', 'Denmark'], ['SE', 'Sweden'], ['NO', 'Norway'], ['FI', 'Finland'],
-  ['PL', 'Poland'], ['CZ', 'Czechia'], ['TR', 'Türkiye'], ['ZA', 'South Africa'],
-  ['AE', 'United Arab Emirates'], ['SG', 'Singapore'], ['TW', 'Taiwan'], ['JP', 'Japan'],
+  ['AU', 'Australia'], ['AT', 'Austria'], ['BE', 'Belgium'], ['CA', 'Canada'],
+  ['CZ', 'Czechia'], ['DK', 'Denmark'], ['FI', 'Finland'], ['FR', 'France'],
+  ['DE', 'Germany'], ['IE', 'Ireland'], ['IT', 'Italy'], ['JP', 'Japan'],
+  ['MX', 'Mexico'], ['NL', 'Netherlands'], ['NZ', 'New Zealand'], ['NO', 'Norway'],
+  ['PL', 'Poland'], ['PT', 'Portugal'], ['SG', 'Singapore'], ['ZA', 'South Africa'],
+  ['ES', 'Spain'], ['SE', 'Sweden'], ['CH', 'Switzerland'], ['TW', 'Taiwan'],
+  ['TR', 'Türkiye'], ['AE', 'United Arab Emirates'], ['GB', 'United Kingdom'],
+  ['US', 'United States'],
 ]
 
 export default function Settings({ settings, onChange, onBack, onRefresh, focusKey }) {
