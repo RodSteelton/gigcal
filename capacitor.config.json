@@ -1,0 +1,12 @@
+{
+  "appId": "io.github.rodsteelton.gigcal",
+  "appName": "GigCal",
+  "webDir": "dist",
+  "server": {
+    "url": "https://rodsteelton.github.io/gigcal/",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "always"
+  }
+}

@@ -109,6 +109,28 @@ attached to the `android-v1` release: https://github.com/RodSteelton/gigcal/rele
 - Local JDK 17 and Android SDK command-line tools live outside Dropbox at
   `C:\Users\ssber\tools\jdk-17.0.11+9` and `C:\Users\ssber\tools\android-sdk`.
 
+## iOS app (in progress)
+
+A Capacitor wrapper (`ios/`, appId `io.github.rodsteelton.gigcal`) around the
+same live site — the iOS equivalent of the Android TWA above. Config is
+`capacitor.config.json` at the repo root: `server.url` points at the hosted
+site, so the native shell just loads the live PWA (no bundled web build to
+keep in sync). Building requires a Mac or a macOS GitHub Actions runner —
+neither is wired up yet; that's the next step, once the Apple Developer
+account (docs/ios-plan-and-handoff.md) is approved.
+
+- To regenerate the `ios/` project after a config change: `npx cap sync ios`.
+- Native feature for Guideline 4.2 (Apple rejects bare web wrappers): "Add to
+  Calendar" on every show, via `@ebarooni/capacitor-calendar`
+  (`src/lib/addToCalendar.js`). On iOS it opens the system add-event sheet
+  directly (`createEventWithPrompt`, write-only access — no calendar-read
+  permission needed). On web and Android (including the TWA) it falls back to
+  downloading an `.ics` file, which every calendar app on both platforms can
+  import. iOS permission string lives in `ios/App/App/Info.plist`
+  (`NSCalendarsWriteOnlyAccessUsageDescription`).
+- Uses Capacitor 8 + Swift Package Manager (no CocoaPods/`Podfile` — Capacitor
+  8's default), which keeps a macOS CI runner simpler.
+
 ## Planned: online hosting
 
 Decision (2026-09-03): publish online once feature work settles; each user gets

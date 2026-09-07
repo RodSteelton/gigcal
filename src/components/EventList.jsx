@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { addToCalendar } from '../lib/addToCalendar'
 
 function headingFor(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number)
@@ -50,6 +51,17 @@ export default function EventList({ events, showTown }) {
                   <div className="event-meta">
                     {e.genre && <span className="chip">{e.genre}</span>}
                     {e.price && <span className="chip price">{e.price}</span>}
+                    <button
+                      type="button"
+                      className="add-cal-btn"
+                      onClick={(ev) => {
+                        ev.preventDefault()
+                        ev.stopPropagation()
+                        addToCalendar(e)
+                      }}
+                    >
+                      + Calendar
+                    </button>
                     {e.url && (
                       <span className="tickets">{e.fromSite ? 'Details ↗' : 'Tickets ↗'}</span>
                     )}
