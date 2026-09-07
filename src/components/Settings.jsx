@@ -8,8 +8,10 @@ const COUNTRIES = [
   ['US', 'United States'], ['CA', 'Canada'], ['GB', 'United Kingdom'], ['IE', 'Ireland'],
   ['AU', 'Australia'], ['NZ', 'New Zealand'], ['MX', 'Mexico'], ['DE', 'Germany'],
   ['AT', 'Austria'], ['CH', 'Switzerland'], ['NL', 'Netherlands'], ['BE', 'Belgium'],
+  ['FR', 'France'], ['IT', 'Italy'], ['ES', 'Spain'], ['PT', 'Portugal'],
   ['DK', 'Denmark'], ['SE', 'Sweden'], ['NO', 'Norway'], ['FI', 'Finland'],
-  ['PL', 'Poland'], ['ES', 'Spain'], ['CZ', 'Czechia'], ['ZA', 'South Africa'],
+  ['PL', 'Poland'], ['CZ', 'Czechia'], ['TR', 'Türkiye'], ['ZA', 'South Africa'],
+  ['AE', 'United Arab Emirates'], ['SG', 'Singapore'], ['TW', 'Taiwan'], ['JP', 'Japan'],
 ]
 
 export default function Settings({ settings, onChange, onBack, onRefresh, focusKey }) {
