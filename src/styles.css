@@ -172,6 +172,51 @@ html, body {
   margin: 4px 0 6px;
 }
 
+/* ---------- wide screens: calendar left, list right ---------- */
+@media (min-width: 860px) {
+  .app {
+    max-width: 1080px;
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: minmax(380px, 440px) 1fr;
+    grid-auto-flow: row dense;
+    gap: 0 24px;
+    align-items: start;
+  }
+
+  main > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  main > .calendar {
+    grid-column: 1;
+    position: sticky;
+    top: 74px;
+  }
+
+  main > .banner.clear-day {
+    grid-column: 1;
+  }
+
+  main:has(.calendar) > .event-list,
+  main:has(.calendar) > .empty-list {
+    grid-column: 2;
+    grid-row: span 90;
+  }
+
+  main:has(.calendar) > .event-list .date-heading {
+    margin-top: 4px;
+    margin-bottom: 8px;
+  }
+
+  main:has(.calendar) > .event-list section:not(:first-child) .date-heading {
+    margin-top: 18px;
+  }
+}
+
 /* ---------- footer ---------- */
 .app-footer {
   margin-top: 32px;
