@@ -14,6 +14,7 @@
 function normText(s) {
   return s
     .toLowerCase()
+    .replace(/[’']/g, '')
     .replace(/&/g, ' and ')
     .replace(/\W+/g, ' ')
     .trim()

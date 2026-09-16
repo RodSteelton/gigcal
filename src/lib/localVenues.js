@@ -37,7 +37,7 @@ export const SUGGESTED_VENUES = [
     city: 'Charlottesville',
     state: 'VA',
     name: 'C-VILLE Weekly area calendar',
-    url: 'https://events.c-ville.com/calendars/all-events?proxy_host=events.c-ville.com&proxy_slug=cville',
+    url: 'https://events.c-ville.com/calendars/all-events',
     aggregator: true,
   },
 ]

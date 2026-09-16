@@ -78,7 +78,7 @@ async function extract(target, tz) {
   // JS-rendered, but the platform serves a clean JSON feed.
   const stDirect = target.match(/^https?:\/\/([a-z0-9-]+)\.scenethink\.com\/([a-z0-9_-]+)/i)
   if (stDirect) {
-    const evs = await sceneThink(stDirect[1], stDirect[2], target)
+    const evs = await sceneThink(stDirect[1], stDirect[2])
     if (evs.length) return done('scenethink', evs)
   }
 
@@ -117,7 +117,7 @@ async function extract(target, tz) {
     if (['assets', 'packs', 'fonts', 'system', 'images'].includes(slug) || stSeen.has(key)) continue
     stSeen.add(key)
     if (stSeen.size > 3) break
-    const evs = await sceneThink(m[1], slug, target).catch(() => [])
+    const evs = await sceneThink(m[1], slug).catch(() => [])
     if (evs.length) return done('scenethink', evs)
   }
 
@@ -288,7 +288,7 @@ async function fetchJson(url) {
   return JSON.parse(text)
 }
 
-async function sceneThink(sub, slug, target) {
+async function sceneThink(sub, slug) {
   const base = `https://${sub}.scenethink.com/${slug}`
   const data = await fetchJson(`${base}/events.json`)
   if (!Array.isArray(data?.events)) return []
@@ -296,17 +296,10 @@ async function sceneThink(sub, slug, target) {
   try {
     for (const c of await fetchJson(`${base}/categories.json`)) cats[c.id] = c.name
   } catch {}
-  // Detail links: prefer the branded proxy page the user pasted
-  let detail = (id) => `${base}/events/${id}`
-  try {
-    const t = new URL(target)
-    if (!/scenethink\.com$/i.test(t.hostname)) {
-      const ph = t.searchParams.get('proxy_host')
-      const ps = t.searchParams.get('proxy_slug')
-      const q = ph && ps ? `?proxy_host=${encodeURIComponent(ph)}&proxy_slug=${encodeURIComponent(ps)}` : ''
-      detail = (id) => `${t.origin}/events/${id}${q}`
-    }
-  } catch {}
+  // Detail links point at the SceneThink platform itself rather than a
+  // venue's branded proxy page (e.g. events.c-ville.com) — the platform
+  // stays up even when a given town site is down for maintenance.
+  const detail = (id) => `${base}/events/${id}`
   const today = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
   const horizon = new Date(Date.now() + 240 * 86400000).toISOString().slice(0, 10)
   const out = []
