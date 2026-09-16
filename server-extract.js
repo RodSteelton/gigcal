@@ -78,7 +78,7 @@ async function extract(target, tz) {
   // JS-rendered, but the platform serves a clean JSON feed.
   const stDirect = target.match(/^https?:\/\/([a-z0-9-]+)\.scenethink\.com\/([a-z0-9_-]+)/i)
   if (stDirect) {
-    const evs = await sceneThink(stDirect[1], stDirect[2])
+    const evs = await sceneThink(stDirect[1], stDirect[2], target)
     if (evs.length) return done('scenethink', evs)
   }
 
@@ -117,7 +117,7 @@ async function extract(target, tz) {
     if (['assets', 'packs', 'fonts', 'system', 'images'].includes(slug) || stSeen.has(key)) continue
     stSeen.add(key)
     if (stSeen.size > 3) break
-    const evs = await sceneThink(m[1], slug).catch(() => [])
+    const evs = await sceneThink(m[1], slug, target).catch(() => [])
     if (evs.length) return done('scenethink', evs)
   }
 
@@ -288,7 +288,7 @@ async function fetchJson(url) {
   return JSON.parse(text)
 }
 
-async function sceneThink(sub, slug) {
+async function sceneThink(sub, slug, target) {
   const base = `https://${sub}.scenethink.com/${slug}`
   const data = await fetchJson(`${base}/events.json`)
   if (!Array.isArray(data?.events)) return []
@@ -296,10 +296,13 @@ async function sceneThink(sub, slug) {
   try {
     for (const c of await fetchJson(`${base}/categories.json`)) cats[c.id] = c.name
   } catch {}
-  // Detail links point at the SceneThink platform itself rather than a
-  // venue's branded proxy page (e.g. events.c-ville.com) — the platform
-  // stays up even when a given town site is down for maintenance.
-  const detail = (id) => `${base}/events/${id}`
+  // Detail links: the event id appended to whatever calendar-listing URL we
+  // were given (`events.c-ville.com/calendars/all-events/<id>`), which is
+  // the only pattern confirmed to render a working page — SceneThink's own
+  // `.../events/<id>` and bare `.../<id>` routes both 500/404 in practice,
+  // on both the raw platform subdomain and the branded proxy.
+  const detailBase = target.replace(/\?.*$/, '').replace(/\/+$/, '')
+  const detail = (id) => `${detailBase}/${id}`
   const today = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
   const horizon = new Date(Date.now() + 240 * 86400000).toISOString().slice(0, 10)
   const out = []
