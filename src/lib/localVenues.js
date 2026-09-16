@@ -186,7 +186,10 @@ export async function fetchVenueEvents(venue) {
     city: venue.city,
     state: venue.state || '',
     townKey: venueTownKey(venue),
-    genre: e.genre || '',
+    // A custom venue can be tagged with a category (e.g. Sports for a
+    // school's athletics site) so its events file correctly even though
+    // the source itself has no per-event genre to read.
+    genre: e.genre || venue.category || '',
     url: e.url || venue.url,
     price: e.price || '',
     fromSite: true,

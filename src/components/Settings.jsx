@@ -4,6 +4,8 @@ import { townKey } from '../lib/ticketmaster.js'
 
 const STATES = 'AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC'.split(' ')
 
+const VENUE_CATEGORIES = ['Music', 'Sports', 'Comedy', 'Arts & Theatre', 'Family', 'Film']
+
 const COUNTRIES = [
   ['AU', 'Australia'], ['AT', 'Austria'], ['BE', 'Belgium'], ['CA', 'Canada'],
   ['CZ', 'Czechia'], ['DK', 'Denmark'], ['FI', 'Finland'], ['FR', 'France'],
@@ -85,6 +87,7 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
   const [vUrl, setVUrl] = useState('')
   const [vCity, setVCity] = useState('')
   const [vState, setVState] = useState('')
+  const [vCategory, setVCategory] = useState('Music')
 
   const suggestions = suggestionsForTowns(settings.towns).filter(
     (s) => !settings.venues.some((v) => v.url === s.url)
@@ -102,11 +105,18 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
     let url = vUrl.trim()
     if (!name || !url) return
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url
-    addVenue({ name, url, city: vCity.trim() || (settings.towns[0]?.city ?? ''), state: vState.trim().toUpperCase() || (settings.towns[0]?.state ?? '') })
+    addVenue({
+      name,
+      url,
+      city: vCity.trim() || (settings.towns[0]?.city ?? ''),
+      state: vState.trim().toUpperCase() || (settings.towns[0]?.state ?? ''),
+      category: vCategory,
+    })
     setVName('')
     setVUrl('')
     setVCity('')
     setVState('')
+    setVCategory('Music')
   }
 
   function removeVenue(idx) {
@@ -182,6 +192,9 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
               <li key={v.url}>
                 <span>
                   {v.name} <span className="venue-town">({v.city}{v.state ? `, ${v.state}` : ''})</span>
+                  {v.category && v.category !== 'Music' && (
+                    <span className="venue-town"> · {v.category}</span>
+                  )}
                 </span>
                 <button className="remove" onClick={() => removeVenue(i)} aria-label={`Remove ${v.name}`}>×</button>
               </li>
@@ -214,6 +227,11 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
           events page. Many sites work; if one can't be read, the calendar
           will say so.
         </p>
+        <p className="hint dim">
+          Leave the category as Music unless the site is something else — a
+          school's sports schedule, for instance — so it shows up under the
+          right filter instead of Music.
+        </p>
         <form className="venue-add" onSubmit={addManualVenue}>
           <input value={vName} onChange={(e) => setVName(e.target.value)} placeholder="Venue name" aria-label="Venue name" />
           <input value={vUrl} onChange={(e) => setVUrl(e.target.value)} placeholder="Events page address (https://…)" aria-label="Events page address" />
@@ -223,6 +241,11 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
               <option value="">State…</option>
               {STATES.map((s) => (
                 <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <select value={vCategory} onChange={(e) => setVCategory(e.target.value)} aria-label="Venue category">
+              {VENUE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
             <button className="btn" type="submit">Add</button>
