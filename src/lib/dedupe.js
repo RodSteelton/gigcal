@@ -14,6 +14,8 @@
 function normText(s) {
   return s
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // strip accents: café -> cafe
     .replace(/[’']/g, '')
     .replace(/&/g, ' and ')
     .replace(/\W+/g, ' ')
