@@ -37,7 +37,7 @@ export default {
       headers: {
         ...CORS,
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=1800',
+        'Cache-Control': 'public, max-age=300',
       },
     })
   },
