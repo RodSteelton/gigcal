@@ -40,6 +40,13 @@ export const SUGGESTED_VENUES = [
     url: 'https://events.c-ville.com/calendars/all-events',
     aggregator: true,
   },
+  {
+    city: 'Charlottesville',
+    state: 'VA',
+    name: 'UVA Sports — all teams',
+    url: 'https://virginiasports.com/all-sports-schedule',
+    category: 'Sports',
+  },
 ]
 
 export const TM_COVERED = {

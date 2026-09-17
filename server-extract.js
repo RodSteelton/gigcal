@@ -82,6 +82,13 @@ async function extract(target, tz) {
     if (evs.length) return done('scenethink', evs)
   }
 
+  // Virginia Sports (virginiasports.com) — Nuxt-rendered, no markup in the
+  // static page, but it loads from a public JSON API underneath.
+  if (/^https?:\/\/virginiasports\.com\//i.test(target)) {
+    const evs = await virginiaSports(tz)
+    if (evs.length) return done('virginiasports', evs)
+  }
+
   const { text, type } = await fetchText(target)
 
   if (type.includes('text/calendar') || text.startsWith('BEGIN:VCALENDAR')) {
@@ -321,6 +328,51 @@ async function sceneThink(sub, slug, target) {
       price: '',
       venue: e.venue && e.venue.name ? String(e.venue.name) : '',
       genre: cats[e.categories?.[0]?.id] || '',
+    })
+  }
+  return out
+}
+
+// ---------- Virginia Sports (virginiasports.com) ----------
+// The page itself is an empty Nuxt shell — the schedule is filled in by
+// client-side JS calling this JSON API. Every UVA sport shares one feed.
+async function virginiaSports(tz) {
+  const params = new URLSearchParams({
+    'filter[hide_from_all_sports_schedule]': 'false',
+    'filter[upcoming]': 'true',
+    sort: 'datetime',
+    include: 'schedule.sport',
+    per_page: '200',
+    page: '1',
+  })
+  const data = await fetchJson(`https://virginiasports.com/website-api/schedule-events?${params}`)
+  const events = Array.isArray(data?.data) ? data.data : []
+  // A second page covers the rest of a full season; cap at 2 to stay quick.
+  if (data?.meta?.last_page > 1) {
+    params.set('page', '2')
+    const more = await fetchJson(`https://virginiasports.com/website-api/schedule-events?${params}`).catch(() => null)
+    if (Array.isArray(more?.data)) events.push(...more.data)
+  }
+  const out = []
+  for (const e of events) {
+    if (!e.datetime) continue
+    const sport = e.schedule?.sport?.name || 'Athletics'
+    const slug = e.schedule?.sport?.slug
+    const prep = e.neutral_event_preposition || (e.venue_type === 'away' ? 'at' : 'vs')
+    const name = e.opponent_name ? `${sport} ${prep} ${e.opponent_name}` : e.promo_title || sport
+    const { date, time } = dateParts(new Date(e.datetime), tz)
+    // Some entries (mainly tournament slots without a set start) come back
+    // as exactly midnight local — a placeholder, not a real kickoff time.
+    out.push({
+      name,
+      date,
+      time: e.tba || time === '00:00:00' ? '' : time,
+      venue: e.location || 'Charlottesville, Va.',
+      genre: 'Sports',
+      url: slug
+        ? `https://virginiasports.com/sports/${slug}/schedule`
+        : 'https://virginiasports.com/all-sports-schedule',
+      price: '',
     })
   }
   return out
