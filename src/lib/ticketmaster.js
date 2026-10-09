@@ -1,7 +1,9 @@
-// Ticketmaster Discovery API client. The API allows browser requests
-// directly (CORS), so no server of our own is involved — the key the
-// user saves in Settings goes straight from their device to Ticketmaster.
+// Ticketmaster Discovery API client. By default requests go through the
+// GigCal Worker, which holds the shared key and caches answers. A user who
+// pastes their own key in Settings skips the Worker and talks to
+// Ticketmaster directly (the API allows browser requests).
 const BASE = 'https://app.ticketmaster.com/discovery/v2/events.json'
+const PROXY = 'https://gigcal-reader.rodsteelton.workers.dev/tm'
 
 export function townKey(t) {
   if (t.state) return `${t.city}, ${t.state}`
@@ -9,8 +11,15 @@ export function townKey(t) {
   return t.city
 }
 
-async function request(params, town) {
-  const res = await fetch(`${BASE}?${params}`)
+async function request(params, town, apiKey) {
+  let url
+  if (apiKey) {
+    params.set('apikey', apiKey)
+    url = `${BASE}?${params}`
+  } else {
+    url = `${PROXY}?${params}`
+  }
+  const res = await fetch(url)
   if (res.status === 401) throw new Error('bad-key')
   if (res.status === 429) throw new Error('rate-limit')
   if (!res.ok) throw new Error('http-' + res.status)
@@ -21,7 +30,6 @@ async function request(params, town) {
 
 export async function fetchTownEvents({ apiKey, town, startISO, endISO, category = 'Music' }) {
   const params = new URLSearchParams({
-    apikey: apiKey,
     city: town.city,
     countryCode: town.country || 'US',
     sort: 'date,asc',
@@ -31,24 +39,27 @@ export async function fetchTownEvents({ apiKey, town, startISO, endISO, category
   })
   if (category && category !== 'Everything') params.set('classificationName', category)
   if (town.state) params.set('stateCode', town.state)
-  return request(params, town)
+  return request(params, town, apiKey)
 }
 
 // Free-text search (band, venue, "trivia", …) over the next six months.
+// The window starts at the beginning of today (UTC) so repeat searches share
+// the Worker's cache; the caller already drops anything before today.
 export async function searchTownEvents({ apiKey, town, keyword }) {
   const iso = (d) => d.toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const dayStart = new Date()
+  dayStart.setUTCHours(0, 0, 0, 0)
   const params = new URLSearchParams({
-    apikey: apiKey,
     keyword,
     city: town.city,
     countryCode: town.country || 'US',
     sort: 'date,asc',
     size: '100',
-    startDateTime: iso(new Date()),
-    endDateTime: iso(new Date(Date.now() + 180 * 86400000)),
+    startDateTime: iso(dayStart),
+    endDateTime: iso(new Date(dayStart.getTime() + 180 * 86400000)),
   })
   if (town.state) params.set('stateCode', town.state)
-  return request(params, town)
+  return request(params, town, apiKey)
 }
 
 function normalize(e, town) {

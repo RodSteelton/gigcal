@@ -6,7 +6,6 @@ import { loadSettings, saveSettings, cacheGet, cachePut, cacheClear } from './li
 import { fetchTownEvents, searchTownEvents, townKey } from './lib/ticketmaster.js'
 import { fetchVenueEvents, venueTownKey, siteCategoryMatch } from './lib/localVenues.js'
 import { dedupeEvents } from './lib/dedupe.js'
-import { sampleEvents } from './lib/sample.js'
 
 function firstOfMonth(d) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -34,7 +33,6 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(null)
   const [refreshTick, setRefreshTick] = useState(0)
   const [siteErrors, setSiteErrors] = useState([])
-  const [settingsFocus, setSettingsFocus] = useState('')
   const [installEvt, setInstallEvt] = useState(null)
   const [query, setQuery] = useState('')
   const [lastQuery, setLastQuery] = useState('')
@@ -56,13 +54,6 @@ export default function App() {
     await installEvt.userChoice.catch(() => {})
     setInstallEvt(null)
   }
-
-  function openKeySettings() {
-    setSettingsFocus('key')
-    setScreen('settings')
-  }
-
-  const demo = !settings.apiKey
 
   function updateSettings(next) {
     setSettings(next)
@@ -88,21 +79,19 @@ export default function App() {
 
       const category = settings.category || 'Music'
 
-      if (settings.apiKey) {
-        for (const town of settings.towns) {
-          const key = `${townKey(town)}|${monthTag}|${category}`
-          let evs = cacheGet(key)
-          if (!evs) {
-            try {
-              evs = await fetchTownEvents({ apiKey: settings.apiKey, town, startISO, endISO, category })
-              cachePut(key, evs)
-            } catch (e) {
-              err = e.message
-              evs = []
-            }
+      for (const town of settings.towns) {
+        const key = `${townKey(town)}|${monthTag}|${category}`
+        let evs = cacheGet(key)
+        if (!evs) {
+          try {
+            evs = await fetchTownEvents({ apiKey: settings.apiKey, town, startISO, endISO, category })
+            cachePut(key, evs)
+          } catch (e) {
+            err = e.message
+            evs = []
           }
-          all.push(...evs)
         }
+        all.push(...evs)
       }
 
       // Venue and town-calendar events, mapped into the active category
@@ -132,17 +121,23 @@ export default function App() {
         }
       }
 
-      if (!settings.apiKey && !settings.venues.length) {
-        all.push(...sampleEvents(monthStart, settings.towns))
-      }
-
       if (cancelled) return
       setEvents(sortByStart(dedupeEvents(all)))
       setLoading(false)
       setSiteErrors(failedSites)
-      if (err === 'bad-key') setError("That key didn't work — double-check it in Settings.")
-      else if (err === 'rate-limit') setError('Checked too often — try again in a minute.')
-      else if (err) setError('Could not reach the listings service. Check your internet connection.')
+      if (err === 'bad-key') {
+        setError(
+          settings.apiKey
+            ? "That key didn't work — double-check it in Settings."
+            : "Big-venue listings are unavailable right now. Local shows still work."
+        )
+      } else if (err === 'rate-limit') {
+        setError(
+          settings.apiKey
+            ? 'Checked too often — try again in a minute.'
+            : 'Big-venue listings are busy right now — try again in a few minutes. Local shows still work.'
+        )
+      } else if (err) setError('Could not reach the listings service. Check your internet connection.')
     }
     load()
     return () => {
@@ -160,12 +155,10 @@ export default function App() {
     const ql = q.toLowerCase()
     const results = []
     // Ticketmaster first: richer listings win the duplicate merge
-    if (settings.apiKey) {
-      for (const town of settings.towns) {
-        try {
-          results.push(...(await searchTownEvents({ apiKey: settings.apiKey, town, keyword: q })))
-        } catch {}
-      }
+    for (const town of settings.towns) {
+      try {
+        results.push(...(await searchTownEvents({ apiKey: settings.apiKey, town, keyword: q })))
+      } catch {}
     }
     const orderedVenues = [...settings.venues].sort(
       (a, b) => (a.aggregator ? 1 : 0) - (b.aggregator ? 1 : 0)
@@ -268,7 +261,6 @@ export default function App() {
           onChange={updateSettings}
           onBack={() => setScreen('calendar')}
           onRefresh={refresh}
-          focusKey={settingsFocus === 'key'}
         />
       ) : settings.towns.length === 0 && settings.venues.length === 0 ? (
         <div className="welcome">
@@ -322,16 +314,6 @@ export default function App() {
             <div className="key-cta">
               <p>Put GigCal on your home screen — opens like an app, no browser bar.</p>
               <button className="btn" onClick={installApp}>Add to phone</button>
-            </div>
-          )}
-          {demo && (
-            <div className="key-cta">
-              <p>
-                {settings.venues.length > 0
-                  ? 'Your local venues are live. For the big halls and arenas, add the free listings key — takes two minutes.'
-                  : 'These are sample shows. Real listings need a free key — takes two minutes.'}
-              </p>
-              <button className="btn" onClick={openKeySettings}>Get my free key</button>
             </div>
           )}
           {error && <div className="banner error">{error}</div>}

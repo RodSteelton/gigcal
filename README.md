@@ -13,11 +13,14 @@ the browser's **Add to Home Screen** to keep it as an app icon.
 First-run setup inside the app:
 
 1. Tap **Choose my towns** and add the cities you care about.
-2. Until a listings key is added, the calendar shows made-up **sample shows**.
-3. For real listings: Settings → "Event data key" — create a free account at
-   https://developer.ticketmaster.com, copy the **Consumer Key**, paste it in.
-   The key lives only in the browser's local storage and is sent only to
-   Ticketmaster (their Discovery API allows browser requests directly).
+2. Big-venue listings (Ticketmaster) work with no setup: the app asks the
+   GigCal Worker (`worker/`, route `/tm`), which holds the shared Ticketmaster
+   key as the `TM_API_KEY` secret and caches each city/month/category for 2
+   hours. The key is never in the repo or the app. To (re)set it:
+   `cd worker; npx wrangler secret put TM_API_KEY` and paste the key at the prompt.
+3. Optional: Settings → "Your own listings key" — a user's own free key from
+   https://developer.ticketmaster.com skips the Worker and goes straight to
+   Ticketmaster (stored only in that browser's local storage).
 
 ## Development
 
@@ -130,10 +133,3 @@ account (docs/ios-plan-and-handoff.md) is approved.
   (`NSCalendarsWriteOnlyAccessUsageDescription`).
 - Uses Capacitor 8 + Swift Package Manager (no CocoaPods/`Podfile` — Capacitor
   8's default), which keeps a macOS CI runner simpler.
-
-## Planned: online hosting
-
-Decision (2026-09-03): publish online once feature work settles; each user gets
-their own free Ticketmaster key. Note: static hosting alone won't run
-`/api/extract` — the venue reader needs a small server home (e.g. a free
-Cloudflare Worker) when we deploy.

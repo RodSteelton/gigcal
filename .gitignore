@@ -9,3 +9,8 @@ vite.config.js.timestamp-*
 android/*
 !android/twa-manifest.json
 *.docx
+
+# Cloudflare Worker local secrets (never commit)
+.dev.vars
+**/.dev.vars
+worker/.wrangler/

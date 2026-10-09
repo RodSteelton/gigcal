@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { suggestionsForTowns, tmCoveredForTowns, areaCities } from '../lib/localVenues.js'
 import { townKey } from '../lib/ticketmaster.js'
 
@@ -17,15 +17,7 @@ const COUNTRIES = [
   ['US', 'United States'],
 ]
 
-export default function Settings({ settings, onChange, onBack, onRefresh, focusKey }) {
-  const keyPanelRef = useRef(null)
-
-  useEffect(() => {
-    if (focusKey && keyPanelRef.current) {
-      keyPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [focusKey])
-
+export default function Settings({ settings, onChange, onBack, onRefresh }) {
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [country, setCountry] = useState('US')
@@ -253,10 +245,13 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
         </form>
       </section>
 
-      <section className={`panel${focusKey ? ' highlight' : ''}`} ref={keyPanelRef}>
-        <h2>Event data key</h2>
+      <section className="panel">
+        <h2>Your own listings key (optional)</h2>
         <p className="hint">
-          Real concert listings come from Ticketmaster. It's free — takes about two minutes:
+          Big-venue listings from Ticketmaster already work with no setup. If
+          you use GigCal a lot, you can add your own free Ticketmaster key so
+          your searches don't share the app's daily allowance. It takes about
+          two minutes:
         </p>
         <ol className="hint steps">
           <li>
@@ -285,7 +280,7 @@ export default function Settings({ settings, onChange, onBack, onRefresh, focusK
         </form>
         <p className="hint dim">
           The key is stored only on this device and sent only to Ticketmaster.
-          Until you add one, the calendar shows made-up sample shows.
+          Clear the box and save to go back to the shared listings.
         </p>
       </section>
 
