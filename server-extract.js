@@ -38,8 +38,18 @@ function dateParts(d, tz) {
   return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}:00` }
 }
 
-export async function extractEvents(target, tzWanted) {
+export async function extractEvents(rawTarget, tzWanted) {
   const tz = safeTz(tzWanted || '')
+  // Map data sometimes has "https://name@site.com/" — fetch() rejects credentials.
+  let target = rawTarget
+  try {
+    const u = new URL(rawTarget)
+    if (u.username || u.password) {
+      u.username = ''
+      u.password = ''
+      target = u.href
+    }
+  } catch {}
   const cacheKey = `${target}|${tz}`
   const hit = cache.get(cacheKey)
   if (hit && Date.now() - hit.at < TTL) return hit.result
@@ -73,7 +83,7 @@ async function fetchText(url) {
   }
 }
 
-async function extract(target, tz) {
+async function extract(target, tz, depth = 0) {
   // SceneThink town calendars (events.c-ville.com style) — the page is
   // JS-rendered, but the platform serves a clean JSON feed.
   const stDirect = target.match(/^https?:\/\/([a-z0-9-]+)\.scenethink\.com\/([a-z0-9_-]+)/i)
@@ -165,7 +175,54 @@ async function extract(target, tz) {
     return done('ics', parseICS(ical.text))
   }
 
+  // Nothing readable here. A venue's homepage often just links to its events
+  // page, so try those links once (never from inside a sub-page).
+  if (depth === 0) {
+    for (const page of eventPageCandidates(text, target)) {
+      const sub = await extract(page, tz, 1).catch(() => null)
+      if (sub && sub.ok) return { ...sub, page }
+    }
+  }
+
   return { ok: false, error: 'no-readable-calendar' }
+}
+
+// Same-site links that look like an events/calendar page, best guesses first.
+// Capped at 4: each attempt costs several fetches and the Worker has a
+// per-request limit on outgoing fetches.
+function eventPageCandidates(html, base) {
+  let origin
+  try {
+    origin = new URL(base)
+  } catch {
+    return []
+  }
+  const sameSite = (h) => h.replace(/^www\./, '') === origin.hostname.replace(/^www\./, '')
+  const scored = new Map()
+  const add = (href, score) => {
+    try {
+      const u = new URL(href, base)
+      if (!/^https?:$/.test(u.protocol) || !sameSite(u.hostname)) return
+      if (/\.(pdf|jpe?g|png|gif|webp|svg|zip|docx?)$/i.test(u.pathname)) return
+      u.hash = ''
+      const key = u.href
+      if (key === base || key === base + '/') return
+      if ((scored.get(key) || 0) < score) scored.set(key, score)
+    } catch {}
+  }
+  for (const m of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]{0,160}?)<\/a>/gi)) {
+    const text = m[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    if (/\/(events?|calendar|shows?|live-?music|schedule|whats-?on|entertainment|lineup)\b/i.test(m[1])) add(m[1], 3)
+    else if (/^(events?|calendar|shows?|live music|upcoming|schedule|what'?s on|entertainment)\b/i.test(text)) add(m[1], 2)
+  }
+  const ranked = [...scored.entries()].sort((a, b) => b[1] - a[1]).map((e) => e[0])
+  if (ranked.length < 4) {
+    for (const p of ['/events', '/calendar', '/shows', '/live-music']) {
+      const u = new URL(p, base).href
+      if (!ranked.includes(u)) ranked.push(u)
+    }
+  }
+  return ranked.slice(0, 4)
 }
 
 function done(source, events) {

@@ -139,7 +139,7 @@ const WORKER_URL = 'https://gigcal-reader.rodsteelton.workers.dev/extract'
 // Bump this whenever server-extract.js changes: it's appended to the Worker
 // request so Cloudflare's edge cache (keyed on the full request URL) can't
 // keep serving a pre-fix response after a deploy.
-const READER_VERSION = 3
+const READER_VERSION = 4
 const TZ = (() => {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || ''
