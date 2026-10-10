@@ -245,10 +245,7 @@ export default function App() {
         )}
         <button
           className="btn ghost gear"
-          onClick={() => {
-            setSettingsFocus('')
-            setScreen(screen === 'settings' ? 'calendar' : 'settings')
-          }}
+          onClick={() => setScreen(screen === 'settings' ? 'calendar' : 'settings')}
           aria-label="Settings"
         >
           ⚙
